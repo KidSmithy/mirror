@@ -1,9 +1,12 @@
+import os
 import logging
 import uuid
 from datetime import datetime, date
 from typing import List, Optional
 from fastapi import FastAPI, Header, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 
 from app.config import settings
 from app.db import supabase_client
@@ -287,3 +290,25 @@ def update_attachment_map_counts(user_id: str, tags: List[str]):
         }).eq("user_id", user_id).execute()
     except Exception as e:
         logger.error(f"Failed to update attachment map metrics: {e}")
+
+# Serve static files and fallback to index.html for SPA routing
+frontend_dist_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "frontend", "dist"))
+
+# Mount assets folder
+assets_path = os.path.join(frontend_dist_path, "assets")
+if os.path.exists(assets_path):
+    app.mount("/assets", StaticFiles(directory=assets_path), name="assets")
+
+# Catch-all route to serve SPA frontend
+@app.get("/{catchall:path}")
+def serve_spa(catchall: str):
+    if "." in catchall and not catchall.endswith(".html"):
+        file_path = os.path.join(frontend_dist_path, catchall)
+        if os.path.exists(file_path):
+            return FileResponse(file_path)
+            
+    index_file = os.path.join(frontend_dist_path, "index.html")
+    if os.path.exists(index_file):
+        return FileResponse(index_file)
+    return {"error": "Frontend build not found"}
+

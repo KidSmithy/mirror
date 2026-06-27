@@ -8,7 +8,9 @@ import {
   CheckCircle2
 } from 'lucide-react';
 
-const API_BASE = 'http://127.0.0.1:8000/api';
+const API_BASE = import.meta.env.DEV 
+  ? 'http://127.0.0.1:8000/api' 
+  : '/api';
 
 // List of test users matching backend/test_users.md
 const TEST_USERS = [
