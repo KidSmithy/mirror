@@ -116,6 +116,43 @@ class MockSupabaseClient:
                     "avoidant_count": 7,
                     "secure_count": 19
                 }
+            ],
+            "profiles": [
+                {
+                    "id": "e1a8b9c8-1234-5678-abcd-ef0123456789",
+                    "email": "enkh@mirror.ai",
+                    "name": "Enkh",
+                    "overall_reflection": "You seek safety in proximity, holding tight to avoid the chill of distance. Your reflection shows a deeply caring heart that sometimes forgets its own boundaries in the search for reassurance. In silence, you hear rejection; in space, you fear abandonment. The mirror invites you to breathe, to step back, and to trust that you are whole even when standing alone.",
+                    "attachment_style": "Anxious-leaning"
+                },
+                {
+                    "id": "f2b9c0d1-2345-6789-bcde-f0123456789a",
+                    "email": "alex@mirror.ai",
+                    "name": "Alex",
+                    "overall_reflection": "You have built beautiful, sturdy walls to protect your quiet center, equating independence with survival. Your reflection shows a self-reliant soul who hesitates to let others see the vulnerability underneath. When others reach out, you step back to catch your breath. The mirror invites you to lower the drawbridge, even a fraction, and discover that connection does not mean captivity.",
+                    "attachment_style": "Avoidant-leaning"
+                },
+                {
+                    "id": "a3c0d1e2-3456-7890-cdef-0123456789ab",
+                    "email": "taylor@mirror.ai",
+                    "name": "Taylor",
+                    "overall_reflection": "You move through relationships with a steady, grounded rhythm, comfortable with both closeness and solitude. Your reflection shows a balanced self that communicates clearly and trusts others. You do not fear the distance, nor do you fear the embrace. The mirror celebrates your clarity and invites you to keep holding space for others to find their footing.",
+                    "attachment_style": "Secure"
+                },
+                {
+                    "id": "b4d1e2f3-4567-8901-def0-123456789abc",
+                    "email": "jordan@mirror.ai",
+                    "name": "Jordan",
+                    "overall_reflection": "You exist in a delicate dance of approach and retreat, craving the warmth of closeness while fearing the fire of vulnerability. Your reflection shows a highly sensitive heart that sees safety as a moving target. You reach out, then pull back when the distance grows too small. The mirror invites you to recognize this cycle and find a steady anchor within yourself.",
+                    "attachment_style": "Fearful-avoidant (disorganized)"
+                },
+                {
+                    "id": "c5e2f3a4-5678-9012-ef01-23456789abcd",
+                    "email": "morgan@mirror.ai",
+                    "name": "Morgan",
+                    "overall_reflection": "You are highly attuned to the emotional weather of those around you, scanning for changes in wind and tide. Your reflection shows a vigilant heart that seeks a secure harbor. You worry that if you stop tending the flame, the warmth will disappear. The mirror invites you to rest and realize that you are worthy of love without constantly earning it.",
+                    "attachment_style": "Anxious-leaning"
+                }
             ]
         }
 

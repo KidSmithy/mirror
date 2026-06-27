@@ -29,6 +29,8 @@ export default function App() {
   const [chats, setChats] = useState([]);
   const [observations, setObservations] = useState([]);
   const [attachmentMap, setAttachmentMap] = useState(null);
+  const [profile, setProfile] = useState(null);
+  const [showReflection, setShowReflection] = useState(false);
   
   // Interactive UI states
   const [loading, setLoading] = useState(false);
@@ -68,17 +70,19 @@ export default function App() {
     setLoading(true);
     const headers = { 'x-user-id': currentUser.id };
     try {
-      const [journalRes, chatRes, obsRes, mapRes] = await Promise.all([
+      const [journalRes, chatRes, obsRes, mapRes, profileRes] = await Promise.all([
         axios.get(`${API_BASE}/journals`, { headers }),
         axios.get(`${API_BASE}/chats`, { headers }),
         axios.get(`${API_BASE}/observations`, { headers }),
-        axios.get(`${API_BASE}/attachment-map`, { headers })
+        axios.get(`${API_BASE}/attachment-map`, { headers }),
+        axios.get(`${API_BASE}/profile`, { headers }).catch(() => ({ data: null }))
       ]);
       
       setJournals(journalRes.data);
       setChats(chatRes.data);
       setObservations(obsRes.data);
       setAttachmentMap(mapRes.data);
+      setProfile(profileRes ? profileRes.data : null);
       setObsIndex(0);
     } catch (err) {
       console.error("Error loading user data from backend:", err);
@@ -575,7 +579,7 @@ export default function App() {
                 {observations.length === 0 ? (
                   <div className="screen-content dark active">
                     <div className="mirror-intro">
-                      <div className="orb-mirror"></div>
+                      <div className="orb-mirror" onClick={() => setShowReflection(true)} style={{ cursor: 'pointer' }}></div>
                       <h3 className="mirror-title">The Mirror is <em>sleeping</em></h3>
                       <p className="mirror-sub">
                         Write some journals and chat with the Therapist first. Then prompt the Mirror to inspect your logs.
@@ -597,7 +601,7 @@ export default function App() {
                     {mirrorSubScreen === 'intro' && (
                       <div className="screen-content dark active">
                         <div className="mirror-intro">
-                          <div className="orb-mirror"></div>
+                          <div className="orb-mirror" onClick={() => setShowReflection(true)} style={{ cursor: 'pointer' }}></div>
                           <div className="mirror-eye">Mirror Session · Week 12</div>
                           <div className="mirror-title">I noticed<br/><em>some things</em>.</div>
                           <p className="mirror-sub">Each is something you wrote yourself. I'm only showing it back.</p>
@@ -703,6 +707,28 @@ export default function App() {
                       </div>
                     )}
                   </>
+                )}
+                {showReflection && (
+                  <div className="reflection-overlay animate-fade-in" onClick={() => setShowReflection(false)}>
+                    <div className="reflection-modal" onClick={(e) => e.stopPropagation()}>
+                      <div className="orb-mirror-expanded animate-pulse-slow"></div>
+                      <div className="reflection-title">
+                        Through the <em>looking glass</em>
+                      </div>
+                      <div className="reflection-name">
+                        {profile?.name || currentUser.name}
+                      </div>
+                      <div className="reflection-style">
+                        {profile?.attachment_style || currentUser.pattern}
+                      </div>
+                      <p className="reflection-text">
+                        {profile?.overall_reflection || "The mirror is dark. Speak to it through journals and chats to reveal your reflection."}
+                      </p>
+                      <button className="cta cta-light" onClick={() => setShowReflection(false)}>
+                        Step back
+                      </button>
+                    </div>
+                  </div>
                 )}
               </>
             )}

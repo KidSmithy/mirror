@@ -43,3 +43,11 @@ class AttachmentMapResponse(BaseModel):
     anxious_count: int
     avoidant_count: int
     secure_count: int
+
+class ProfileResponse(BaseModel):
+    id: str
+    email: Optional[str] = None
+    name: str
+    overall_reflection: str
+    attachment_style: str
+
