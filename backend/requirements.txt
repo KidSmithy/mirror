@@ -1,3 +1,4 @@
+# Python 3.11 Compatible Dependencies
 fastapi>=0.100.0
 uvicorn>=0.22.0
 supabase>=1.0.0
