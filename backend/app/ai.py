@@ -19,23 +19,41 @@ if use_real_gemini:
         logger.error(f"Failed to initialize Gemini client: {e}. Falling back to Mock AI.")
         use_real_gemini = False
 
-def generate_therapist_response(history: list) -> str:
+def generate_therapist_response(history: list, topic: str = "general") -> str:
     """
     Generates a warm, Socratic, attachment-informed response.
     History is a list of dicts: [{'sender': 'me'/'them', 'message': '...'}]
     """
     if not use_real_gemini:
-        # High quality local mock responses based on final user message
         if not history:
-            return "What's on your mind tonight?"
+            return "What's on your mind?"
         last_msg = history[-1]['message'].lower()
-        if "online" in last_msg or "checking" in last_msg:
-            return "The checking is interesting. *What feels worse — that he's not replying, or that you're the one watching?*"
-        if "tired" in last_msg:
-            return "Exhaustion often carries a weight. *Is it the day's tasks that feel heavy, or the silence you're holding?*"
-        if "small" in last_msg:
-            return "Feeling small can sometimes protect us from taking up too much room. *Who in your life makes you feel like you need to shrink?*"
-        return "I hear how much weight that carries for you. *What is the underlying fear if you let go of trying to manage this?*"
+        
+        if topic == "relationship":
+            if "avoid" in last_msg or "distance" in last_msg:
+                return "Distancing can feel like safety when intimacy feels overwhelming. *What did you fear would happen if you stayed close?*"
+            if "anxious" in last_msg or "worry" in last_msg:
+                return "The anxiety is trying to protect the connection. *What does the urge to reach out tell you about your core needs?*"
+            return "Relationships act as mirrors for our oldest patterns. *Where does this particular response style feel familiar?*"
+            
+        elif topic == "mental":
+            if "anxious" in last_msg or "stressed" in last_msg or "tired" in last_msg:
+                return "I hear the stress in your words. *Where in your body do you feel this weight holding on right now?*"
+            return "Naming what is true in the body is the first step of release. *If that feeling had a voice, what would it be saying?*"
+            
+        elif topic == "family":
+            if "mother" in last_msg or "father" in last_msg or "parents" in last_msg:
+                return "Our parents write the first scripts for how we love. *What script did you feel you had to follow?*"
+            return "Childhood survival strategies often become adult blockages. *How did this strategy serve you when you were younger?*"
+            
+        else: # general
+            if "online" in last_msg or "checking" in last_msg:
+                return "The checking is interesting. *What feels worse — that he's not replying, or that you're the one watching?*"
+            if "tired" in last_msg:
+                return "Exhaustion often carries a weight. *Is it the day's tasks that feel heavy, or the silence you're holding?*"
+            if "small" in last_msg:
+                return "Feeling small can sometimes protect us from taking up too much room. *Who in your life makes you feel like you need to shrink?*"
+            return "I hear how much weight that carries for you. *What is the underlying fear if you let go of trying to manage this?*"
 
     try:
         # Build chat transcript
@@ -44,12 +62,31 @@ def generate_therapist_response(history: list) -> str:
             speaker = "User" if h['sender'] == 'me' else "Therapist"
             chat_transcript += f"{speaker}: {h['message']}\n"
         
-        system_instruction = (
-            "You are The Therapist, a warm, Socratic, attachment-informed wellness companion. "
-            "Guide the user through gentle self-inquiry based on attachment theory. "
-            "Keep your responses relatively brief (1-3 sentences) and highly empathetic. "
-            "Reflect back what you hear, and end with a gentle question that prompts deeper reflection."
-        )
+        system_prompts = {
+            "general": (
+                "You are The Therapist, a warm, Socratic, attachment-informed wellness companion. "
+                "Guide the user through gentle self-inquiry based on attachment theory. "
+                "Keep your responses relatively brief (1-3 sentences) and highly empathetic. "
+                "Reflect back what you hear, and end with a gentle question that prompts deeper reflection."
+            ),
+            "relationship": (
+                "You are The Relationship Therapist, a Socratic specialist in relationship dynamics and attachment science. "
+                "Help the user explore patterns of codependency, anxious reassurance-seeking, avoidant distancing, or secure boundary setting. "
+                "Keep responses brief (1-3 sentences), warm, and focused on relationship dynamics. End with an insightful question."
+            ),
+            "mental": (
+                "You are The Wellness Therapist, focusing on emotional regulation, self-compassion, and stress. "
+                "Help the user name their emotions, locate physical tension in their body, and practice self-compassion. "
+                "Keep responses brief (1-3 sentences), soothing, and grounding. End with a reflective Socratic question."
+            ),
+            "family": (
+                "You are The Family Systems Therapist, exploring childhood structures and family patterns. "
+                "Guide the user to trace their current emotional reactions back to early family dynamics, parental expectations, or childhood roles. "
+                "Keep responses brief (1-3 sentences), compassionate, and analytical. End with a gentle question about family history."
+            )
+        }
+
+        system_instruction = system_prompts.get(topic, system_prompts["general"])
 
         prompt = f"""
         Below is the chat history between the User and The Therapist.
