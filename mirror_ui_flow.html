@@ -1,0 +1,900 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Mirror — UI / UX Flow</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --sand: #F5EFE6;
+    --cream: #FAF6EF;
+    --ink: #1A1814;
+    --muted: #6B655B;
+    --terra: #D97757;
+    --terra-soft: #E8B89A;
+    --midnight: #0E0D1A;
+    --midnight-2: #16142A;
+    --lavender: #9B8BB4;
+    --lavender-soft: #C7BCD9;
+    --gold: #C9A66B;
+    --line: rgba(26,24,20,0.08);
+    --line-dark: rgba(255,255,255,0.08);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    background: var(--sand);
+    color: var(--ink);
+    line-height: 1.55;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+  .serif { font-family: 'Instrument Serif', serif; font-weight: 400; letter-spacing: -0.01em; }
+  .italic { font-style: italic; }
+
+  /* ---------- Layout ---------- */
+  .wrap { max-width: 1280px; margin: 0 auto; padding: 0 32px; }
+  section { padding: 96px 0; position: relative; }
+
+  /* ---------- Hero ---------- */
+  .hero {
+    min-height: 92vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 64px 0 120px;
+    position: relative;
+    background: var(--sand);
+    overflow: hidden;
+  }
+  .hero::before {
+    content: '';
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(ellipse 60% 50% at 80% 20%, rgba(217,119,87,0.22), transparent 70%),
+      radial-gradient(ellipse 60% 50% at 20% 70%, rgba(155,139,180,0.22), transparent 70%);
+    pointer-events: none;
+  }
+  .hero::after {
+    content: '';
+    position: absolute; left: 0; right: 0; bottom: 0;
+    height: 240px;
+    background: linear-gradient(180deg, transparent 0%, var(--sand) 80%);
+    pointer-events: none;
+  }
+  .hero > * { position: relative; z-index: 1; }
+  .hero-grain {
+    position: absolute; inset: 0; pointer-events: none; opacity: 0.25; z-index: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.06 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+  .nav {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 24px 0; font-size: 14px; letter-spacing: 0.02em;
+  }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 500; }
+  .brand-dot {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, var(--cream), var(--terra) 70%, var(--midnight));
+    box-shadow: 0 2px 12px rgba(217,119,87,0.4);
+  }
+  .nav-links { display: flex; gap: 28px; color: var(--muted); }
+  .nav-links a { color: inherit; text-decoration: none; }
+  .nav-cta {
+    background: var(--ink); color: var(--cream);
+    padding: 10px 18px; border-radius: 999px; font-size: 13px;
+  }
+
+  .hero-content { margin-top: 80px; }
+  .eyebrow {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 12px; letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 28px;
+  }
+  .eyebrow::before {
+    content: ''; width: 24px; height: 1px; background: var(--muted);
+  }
+  h1.hero-title {
+    font-family: 'Instrument Serif', serif;
+    font-size: clamp(64px, 9vw, 132px);
+    line-height: 0.95;
+    letter-spacing: -0.03em;
+    max-width: 900px;
+    margin-bottom: 32px;
+  }
+  .hero-title em { font-style: italic; color: var(--terra); }
+  .hero-sub {
+    max-width: 560px; font-size: 19px; color: var(--muted); line-height: 1.55;
+    margin-bottom: 48px;
+  }
+  .hero-meta {
+    display: flex; gap: 40px; flex-wrap: wrap; font-size: 13px;
+    color: var(--muted); padding-top: 32px;
+    border-top: 1px solid var(--line);
+  }
+  .hero-meta strong { color: var(--ink); font-weight: 500; display: block; margin-bottom: 4px; font-size: 14px; }
+
+  /* ---------- Section header ---------- */
+  .section-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 64px; gap: 40px; flex-wrap: wrap; }
+  .section-num { font-family: 'Instrument Serif', serif; font-style: italic; font-size: 22px; color: var(--muted); }
+  .section-title { font-family: 'Instrument Serif', serif; font-size: clamp(40px, 5vw, 64px); line-height: 1; letter-spacing: -0.02em; max-width: 700px; }
+  .section-desc { max-width: 380px; color: var(--muted); font-size: 15px; }
+
+  /* ---------- Phone Frame ---------- */
+  .phones-row {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 320px));
+    gap: 48px; justify-content: center; align-items: start;
+  }
+  .phone-shell {
+    width: 320px; height: 660px;
+    border-radius: 44px;
+    background: var(--ink);
+    padding: 12px;
+    box-shadow: 0 30px 60px -20px rgba(26,24,20,0.35), 0 0 0 1px rgba(26,24,20,0.15);
+    position: relative;
+    transition: transform 0.4s ease;
+  }
+  .phone-shell:hover { transform: translateY(-6px); }
+  .phone-screen {
+    width: 100%; height: 100%;
+    border-radius: 32px;
+    overflow: hidden;
+    position: relative;
+    background: var(--cream);
+    display: flex; flex-direction: column;
+  }
+  .phone-screen.dark { background: var(--midnight); color: var(--cream); }
+  .phone-notch {
+    position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
+    width: 100px; height: 28px; background: var(--ink); border-radius: 14px; z-index: 20;
+  }
+  .phone-status {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 18px 28px 8px; font-size: 13px; font-weight: 600;
+  }
+  .phone-status .dots { display: flex; gap: 3px; }
+  .phone-status .dot { width: 4px; height: 4px; background: var(--ink); border-radius: 50%; }
+  .dark .phone-status .dot { background: var(--cream); }
+  .phone-caption {
+    text-align: center; font-size: 12px; color: var(--muted); margin-top: 20px; letter-spacing: 0.02em;
+  }
+  .phone-caption strong { color: var(--ink); font-weight: 500; display: block; margin-bottom: 4px; font-family: 'Instrument Serif', serif; font-size: 16px; font-style: italic; }
+
+  /* ---------- Onboarding screen ---------- */
+  .ob-body { padding: 40px 28px 28px; flex: 1; display: flex; flex-direction: column; }
+  .ob-step { font-size: 11px; letter-spacing: 0.2em; color: var(--muted); text-transform: uppercase; }
+  .ob-progress { display: flex; gap: 4px; margin-top: 12px; margin-bottom: 32px; }
+  .ob-progress span { flex: 1; height: 2px; background: var(--line); border-radius: 1px; }
+  .ob-progress span.on { background: var(--terra); }
+  .ob-q { font-family: 'Instrument Serif', serif; font-size: 28px; line-height: 1.15; letter-spacing: -0.01em; margin-bottom: 24px; }
+  .ob-q em { font-style: italic; color: var(--terra); }
+  .ob-input {
+    flex: 1; background: rgba(217,119,87,0.06);
+    border: 1px dashed var(--terra-soft);
+    border-radius: 16px; padding: 16px;
+    font-size: 14px; color: var(--ink); font-style: italic;
+    display: flex; align-items: flex-start;
+  }
+  .ob-input::after { content: '|'; color: var(--terra); margin-left: 2px; animation: blink 1s infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+  .ob-foot { display: flex; justify-content: space-between; align-items: center; margin-top: 20px; }
+  .ob-skip { font-size: 13px; color: var(--muted); }
+  .ob-next {
+    background: var(--ink); color: var(--cream); border-radius: 999px;
+    padding: 12px 22px; font-size: 13px; display: inline-flex; align-items: center; gap: 8px;
+  }
+
+  /* ---------- Home screen ---------- */
+  .home-head { padding: 20px 24px 14px; }
+  .home-greet-eye { font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); }
+  .home-greet { font-family: 'Instrument Serif', serif; font-size: 26px; line-height: 1.1; margin-top: 6px; letter-spacing: -0.01em; }
+  .home-greet em { font-style: italic; color: var(--terra); }
+  .home-card {
+    margin: 0 20px 10px; padding: 16px 18px; border-radius: 18px;
+    background: linear-gradient(135deg, #FCE9D8, #F5DBC5);
+    position: relative; overflow: hidden;
+  }
+  .home-card.mirror {
+    background: linear-gradient(135deg, #1F1A36, #0E0D1A);
+    color: var(--cream);
+    border: 1px solid rgba(155,139,180,0.2);
+  }
+  .home-card-label { font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; opacity: 0.65; }
+  .home-card.mirror .home-card-label { color: var(--lavender-soft); }
+  .home-card-title { font-family: 'Instrument Serif', serif; font-size: 19px; line-height: 1.2; margin-top: 6px; }
+  .home-card-title em { font-style: italic; }
+  .home-card-meta { display: flex; justify-content: space-between; margin-top: 10px; font-size: 11px; opacity: 0.7; }
+  .home-card.mirror .home-card-meta { opacity: 0.85; }
+  .home-card-shape {
+    position: absolute; right: -20px; top: -20px; width: 100px; height: 100px;
+    border-radius: 50%; background: radial-gradient(circle, rgba(255,255,255,0.4), transparent 70%);
+  }
+  .home-card.mirror .home-card-shape {
+    background: radial-gradient(circle, rgba(199,188,217,0.25), transparent 70%);
+  }
+  .home-list { padding: 4px 20px 0; }
+  .home-list-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 4px; border-top: 1px solid var(--line); font-size: 13px; }
+  .home-list-row:first-child { border-top: none; }
+  .home-list-row .day { font-family: 'Instrument Serif', serif; font-style: italic; color: var(--muted); font-size: 15px; }
+  .home-list-row .snippet { color: var(--ink); max-width: 62%; text-align: right; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  .tab-bar {
+    margin-top: auto; padding: 14px 20px 28px;
+    display: flex; justify-content: space-around;
+    border-top: 1px solid var(--line);
+  }
+  .tab-bar .tab { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 10px; color: var(--muted); }
+  .tab-bar .tab.on { color: var(--ink); }
+  .tab-icon { width: 22px; height: 22px; border: 1.5px solid currentColor; border-radius: 6px; opacity: 0.9; }
+  .tab.on .tab-icon { background: var(--ink); border-color: var(--ink); }
+  .dark .tab-bar { border-color: var(--line-dark); }
+  .dark .tab-bar .tab { color: var(--lavender); }
+  .dark .tab-bar .tab.on { color: var(--cream); }
+  .dark .tab.on .tab-icon { background: var(--cream); border-color: var(--cream); }
+
+  /* ---------- Chat (Therapist) ---------- */
+  .chat-head { padding: 24px 24px 12px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid var(--line); }
+  .chat-avatar {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: radial-gradient(circle at 30% 30%, #FCE9D8, var(--terra) 80%);
+  }
+  .chat-name { font-family: 'Instrument Serif', serif; font-size: 18px; }
+  .chat-name small { display: block; font-family: 'Inter', sans-serif; font-size: 11px; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; margin-top: 2px; }
+  .chat-body { flex: 1; overflow-y: hidden; padding: 20px 22px; display: flex; flex-direction: column; gap: 14px; }
+  .bubble {
+    max-width: 80%; padding: 12px 16px;
+    border-radius: 18px; font-size: 14px; line-height: 1.45;
+  }
+  .bubble.them { background: var(--sand); color: var(--ink); border-bottom-left-radius: 6px; }
+  .bubble.me { align-self: flex-end; background: var(--ink); color: var(--cream); border-bottom-right-radius: 6px; }
+  .bubble em { font-family: 'Instrument Serif', serif; font-style: italic; font-size: 15px; }
+  .typing { display: flex; gap: 4px; padding: 14px 16px; background: var(--sand); border-radius: 18px; width: fit-content; }
+  .typing span { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); opacity: 0.4; animation: typing 1.4s infinite; }
+  .typing span:nth-child(2) { animation-delay: 0.2s; }
+  .typing span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes typing { 0%, 60%, 100% { opacity: 0.4; transform: translateY(0); } 30% { opacity: 1; transform: translateY(-3px); } }
+  .chat-input {
+    margin: 0 18px 18px; padding: 12px 16px;
+    background: var(--cream); border: 1px solid var(--line); border-radius: 999px;
+    display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--muted);
+  }
+  .chat-input-mic { margin-left: auto; width: 28px; height: 28px; border-radius: 50%; background: var(--terra); }
+
+  /* ---------- Mirror Session ---------- */
+  .mirror-head { padding: 28px 24px 20px; }
+  .mirror-eye { font-size: 11px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--lavender); }
+  .mirror-title { font-family: 'Instrument Serif', serif; font-size: 32px; line-height: 1.1; margin-top: 10px; letter-spacing: -0.01em; }
+  .mirror-title em { font-style: italic; color: var(--lavender-soft); }
+  .mirror-sub { font-size: 13px; color: var(--lavender); margin-top: 8px; opacity: 0.8; }
+
+  .mirror-card {
+    margin: 0 20px 16px; padding: 24px;
+    border-radius: 22px;
+    background: linear-gradient(160deg, rgba(155,139,180,0.14), rgba(155,139,180,0.04));
+    border: 1px solid rgba(155,139,180,0.2);
+  }
+  .mirror-quote {
+    font-family: 'Instrument Serif', serif;
+    font-style: italic; font-size: 19px; line-height: 1.4;
+    color: var(--cream);
+  }
+  .mirror-evidence {
+    margin-top: 16px; padding-top: 14px; border-top: 1px solid rgba(155,139,180,0.2);
+    font-size: 12px; color: var(--lavender); line-height: 1.55;
+  }
+  .mirror-evidence strong { color: var(--cream); font-weight: 500; }
+  .mirror-actions { display: flex; gap: 6px; margin-top: 16px; }
+  .pill {
+    flex: 1; text-align: center;
+    padding: 9px 6px; border-radius: 999px;
+    font-size: 11px; white-space: nowrap;
+    border: 1px solid rgba(155,139,180,0.3);
+    color: var(--lavender-soft);
+  }
+  .pill.on { background: var(--cream); color: var(--midnight); border-color: var(--cream); }
+
+  .mirror-orb {
+    width: 90px; height: 90px; margin: 8px auto 16px;
+    border-radius: 50%;
+    background:
+      radial-gradient(circle at 35% 30%, rgba(199,188,217,0.9), transparent 50%),
+      radial-gradient(circle at 65% 70%, rgba(217,119,87,0.5), transparent 55%),
+      radial-gradient(circle at 50% 50%, #2A2548, #0E0D1A 80%);
+    box-shadow: 0 0 60px rgba(155,139,180,0.4), inset 0 0 30px rgba(0,0,0,0.4);
+    animation: orb 6s ease-in-out infinite;
+  }
+  @keyframes orb { 0%, 100% { transform: scale(1) rotate(0deg); } 50% { transform: scale(1.03) rotate(8deg); } }
+
+  /* ---------- Attachment Map ---------- */
+  .map-screen { background: linear-gradient(180deg, #FAF6EF 0%, #EFE5D6 100%); }
+  .map-head { padding: 20px 24px 12px; }
+  .map-eye { font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); }
+  .map-title { font-family: 'Instrument Serif', serif; font-size: 22px; line-height: 1.15; margin-top: 6px; }
+  .map-title em { font-style: italic; color: var(--terra); }
+  .map-canvas {
+    margin: 6px 20px; height: 200px; border-radius: 20px;
+    background: linear-gradient(135deg, #FCE9D8, #C7BCD9 60%, #2A2548);
+    position: relative; overflow: hidden;
+    box-shadow: inset 0 0 60px rgba(26,24,20,0.15);
+  }
+  .map-canvas::before {
+    content: ''; position: absolute; inset: 0;
+    background:
+      radial-gradient(circle at 25% 30%, rgba(255,255,255,0.6), transparent 25%),
+      radial-gradient(circle at 70% 55%, rgba(217,119,87,0.4), transparent 30%),
+      radial-gradient(circle at 50% 80%, rgba(42,37,72,0.5), transparent 35%);
+  }
+  .map-canvas::after {
+    content: ''; position: absolute; inset: 0;
+    background-image:
+      radial-gradient(circle at 22% 28%, var(--ink) 3px, transparent 4px),
+      radial-gradient(circle at 68% 52%, var(--ink) 3px, transparent 4px),
+      radial-gradient(circle at 48% 78%, var(--cream) 3px, transparent 4px),
+      radial-gradient(circle at 38% 45%, var(--terra) 2px, transparent 3px),
+      radial-gradient(circle at 80% 30%, var(--lavender) 2px, transparent 3px);
+  }
+  .map-legend { padding: 12px 24px 8px; display: grid; gap: 8px; }
+  .map-legend-row { display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--muted); white-space: nowrap; }
+  .legend-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+
+  /* ---------- Architecture diagram ---------- */
+  .arch {
+    background: var(--midnight); color: var(--cream);
+    margin: 64px 0 0; padding: 96px 0;
+    position: relative; overflow: hidden;
+  }
+  .arch::before {
+    content: ''; position: absolute; inset: 0;
+    background:
+      radial-gradient(ellipse at 20% 30%, rgba(217,119,87,0.15), transparent 50%),
+      radial-gradient(ellipse at 80% 70%, rgba(155,139,180,0.18), transparent 50%);
+  }
+  .arch-wrap { position: relative; z-index: 1; }
+  .arch h2 { font-family: 'Instrument Serif', serif; font-size: clamp(40px, 5vw, 64px); letter-spacing: -0.02em; margin-bottom: 16px; }
+  .arch h2 em { font-style: italic; color: var(--terra-soft); }
+  .arch p.lede { max-width: 540px; color: var(--lavender-soft); opacity: 0.8; margin-bottom: 64px; font-size: 16px; }
+  .arch-grid { display: grid; grid-template-columns: 1fr auto 1fr; gap: 32px; align-items: center; }
+  @media (max-width: 880px) { .arch-grid { grid-template-columns: 1fr; } }
+  .arch-card {
+    padding: 32px; border-radius: 24px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    backdrop-filter: blur(20px);
+  }
+  .arch-card.therapist { background: linear-gradient(160deg, rgba(217,119,87,0.18), rgba(217,119,87,0.04)); border-color: rgba(217,119,87,0.25); }
+  .arch-card.mirror { background: linear-gradient(160deg, rgba(155,139,180,0.18), rgba(155,139,180,0.04)); border-color: rgba(155,139,180,0.25); }
+  .arch-label { font-size: 11px; letter-spacing: 0.22em; text-transform: uppercase; opacity: 0.7; margin-bottom: 8px; }
+  .arch-name { font-family: 'Instrument Serif', serif; font-size: 36px; letter-spacing: -0.02em; margin-bottom: 16px; line-height: 1; }
+  .arch-name em { font-style: italic; }
+  .therapist .arch-name em { color: var(--terra-soft); }
+  .mirror .arch-name em { color: var(--lavender-soft); }
+  .arch-desc { font-size: 14px; opacity: 0.7; line-height: 1.6; }
+  .arch-tag { display: inline-block; margin-top: 16px; font-size: 11px; padding: 4px 10px; border-radius: 999px; background: rgba(255,255,255,0.08); letter-spacing: 0.1em; text-transform: uppercase; }
+  .arch-bridge {
+    width: 80px; height: 80px; border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, var(--cream), var(--terra) 40%, var(--lavender) 70%, var(--midnight) 95%);
+    box-shadow: 0 0 80px rgba(217,119,87,0.3), 0 0 120px rgba(155,139,180,0.25);
+    margin: 0 auto; position: relative;
+    animation: pulse 4s ease-in-out infinite;
+  }
+  @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.08); } }
+  .arch-bridge::after {
+    content: 'Gemini'; position: absolute; bottom: -28px; left: 50%; transform: translateX(-50%);
+    font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--lavender-soft); white-space: nowrap;
+  }
+
+  .stack {
+    margin-top: 80px; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 24px;
+  }
+  .stack-item {
+    padding: 24px; border-radius: 16px;
+    border: 1px solid rgba(255,255,255,0.08);
+    background: rgba(255,255,255,0.02);
+  }
+  .stack-item h4 { font-family: 'Instrument Serif', serif; font-style: italic; font-size: 22px; margin-bottom: 8px; color: var(--cream); }
+  .stack-item p { font-size: 13px; color: var(--lavender-soft); opacity: 0.75; line-height: 1.5; }
+
+  /* ---------- Footer ---------- */
+  .foot {
+    padding: 64px 0 80px; text-align: center; color: var(--muted); font-size: 13px;
+    border-top: 1px solid var(--line);
+  }
+  .foot em { font-family: 'Instrument Serif', serif; font-style: italic; color: var(--ink); font-size: 18px; display: block; margin-bottom: 8px; }
+
+  /* ---------- Misc ---------- */
+  .glow-line {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--line), transparent);
+    margin: 0;
+  }
+
+  @media (max-width: 720px) {
+    .wrap { padding: 0 20px; }
+    section { padding: 64px 0; }
+    .phone-shell { transform: scale(0.95); }
+  }
+</style>
+</head>
+<body>
+
+<!-- ========== HERO ========== -->
+<header class="hero">
+  <div class="hero-grain"></div>
+  <div class="wrap">
+    <nav class="nav">
+      <div class="brand">
+        <span class="brand-dot"></span>
+        <span>Mirror</span>
+      </div>
+      <div class="nav-links">
+        <a href="#onboarding">Begin</a>
+        <a href="#flow">The Flow</a>
+        <a href="#arch">The Architecture</a>
+      </div>
+      <a href="#" class="nav-cta">Try the demo</a>
+    </nav>
+
+    <div class="hero-content">
+      <div class="eyebrow">A wellness app — with two minds</div>
+      <h1 class="hero-title">Your <em>unconscious</em><br/>has something<br/>to say.</h1>
+      <p class="hero-sub">
+        Mirror is an AI for self-inquiry, built on attachment science. One agent talks with you. Another watches what you don't say — and gently surfaces the patterns you keep missing.
+      </p>
+      <div class="hero-meta">
+        <div><strong>Built on Gemini</strong>Vertex AI Managed Agents</div>
+        <div><strong>Two-Layer AI</strong>Conscious & Unconscious</div>
+        <div><strong>Multimodal</strong>Voice · Image · Text</div>
+        <div><strong>Niche</strong>Attachment-informed</div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- ========== ONBOARDING ========== -->
+<section id="onboarding">
+  <div class="wrap">
+    <div class="section-head">
+      <div>
+        <div class="section-num">01 — Onboarding</div>
+        <h2 class="section-title">No quiz. A <em class="italic serif">conversation</em>.</h2>
+      </div>
+      <p class="section-desc">A five-minute Gemini-led dialogue infers your attachment style from how you describe a real rupture — not from checkboxes. The unconscious agent is already listening.</p>
+    </div>
+
+    <div class="phones-row">
+      <!-- Welcome -->
+      <div>
+        <div class="phone-shell">
+          <div class="phone-notch"></div>
+          <div class="phone-screen">
+            <div class="phone-status"><span>9:41</span><div class="dots"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div></div>
+            <div style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding: 40px 32px; text-align:center;">
+              <div style="width:120px; height:120px; border-radius:50%; background: radial-gradient(circle at 30% 30%, var(--cream), var(--terra) 60%, var(--midnight) 100%); box-shadow: 0 20px 60px rgba(217,119,87,0.3); margin-bottom:40px;"></div>
+              <div class="serif" style="font-size: 38px; line-height: 1.1; letter-spacing:-0.02em; margin-bottom: 16px;">Begin <em class="italic">gently</em>.</div>
+              <p style="color: var(--muted); font-size: 14px; line-height:1.5; margin-bottom: 40px;">Mirror learns who you are through stories, not questions.</p>
+              <div style="background: var(--ink); color: var(--cream); padding: 14px 36px; border-radius: 999px; font-size: 14px;">I'm ready →</div>
+              <div style="margin-top: 20px; font-size: 12px; color: var(--muted);">Takes about 5 minutes</div>
+            </div>
+          </div>
+        </div>
+        <div class="phone-caption"><strong>Welcome</strong>Sets the tone — slow, literary</div>
+      </div>
+
+      <!-- Assessment -->
+      <div>
+        <div class="phone-shell">
+          <div class="phone-notch"></div>
+          <div class="phone-screen">
+            <div class="phone-status"><span>9:42</span><div class="dots"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div></div>
+            <div class="ob-body">
+              <div class="ob-step">Question 3 of 5</div>
+              <div class="ob-progress"><span class="on"></span><span class="on"></span><span class="on"></span><span></span><span></span></div>
+              <div class="ob-q">Tell me about a time you <em>almost</em> reached out — but didn't.</div>
+              <div class="ob-input">It was last March. I was driving home and I almost called my brother but</div>
+              <div class="ob-foot">
+                <div class="ob-skip">Voice instead</div>
+                <div class="ob-next">Continue →</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="phone-caption"><strong>Conversational assessment</strong>Open prompts. Voice or text.</div>
+      </div>
+
+      <!-- Result -->
+      <div>
+        <div class="phone-shell">
+          <div class="phone-notch"></div>
+          <div class="phone-screen">
+            <div class="phone-status"><span>9:48</span><div class="dots"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div></div>
+            <div style="padding: 32px 28px; flex:1; display:flex; flex-direction:column;">
+              <div class="ob-step">Your pattern</div>
+              <div style="margin-top: 16px;">
+                <div class="serif" style="font-size: 38px; line-height: 1; letter-spacing: -0.02em;">Anxious-<em style="font-style:italic; color: var(--terra);">leaning</em>.</div>
+                <p style="color: var(--muted); font-size: 13px; margin-top: 16px; line-height: 1.55;">You stay close. You over-tend. You're often the one who notices the silence before anyone else.</p>
+              </div>
+
+              <div style="margin-top: 24px; padding: 20px; background: rgba(217,119,87,0.06); border-radius: 18px; border: 1px solid rgba(217,119,87,0.15);">
+                <div style="font-size:11px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); margin-bottom: 10px;">A note from the Mirror</div>
+                <div class="serif italic" style="font-size: 15px; color: var(--ink); line-height: 1.4;">"You used the word 'almost' six times. We can come back to that."</div>
+              </div>
+
+              <div style="margin-top: auto; background: var(--ink); color: var(--cream); text-align:center; padding: 14px; border-radius: 999px; font-size: 14px;">Enter Mirror</div>
+            </div>
+          </div>
+        </div>
+        <div class="phone-caption"><strong>Reveal</strong>Both agents introduce themselves</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="glow-line"></div>
+
+<!-- ========== HOME + JOURNAL + CHAT ========== -->
+<section id="flow">
+  <div class="wrap">
+    <div class="section-head">
+      <div>
+        <div class="section-num">02 — Daily</div>
+        <h2 class="section-title">A quiet place to <em class="italic serif">return</em> to.</h2>
+      </div>
+      <p class="section-desc">Two paths from the home screen: write to yourself, or talk to the Therapist. The Mirror is always listening — but it only speaks once a week.</p>
+    </div>
+
+    <div class="phones-row">
+      <!-- Home -->
+      <div>
+        <div class="phone-shell">
+          <div class="phone-notch"></div>
+          <div class="phone-screen">
+            <div class="phone-status"><span>9:41</span><div class="dots"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div></div>
+            <div class="home-head">
+              <div class="home-greet-eye">Thursday — June 26</div>
+              <div class="home-greet">Good evening,<br/><em>Enkh</em>.</div>
+            </div>
+
+            <div class="home-card">
+              <div class="home-card-shape"></div>
+              <div class="home-card-label">Today</div>
+              <div class="home-card-title">Write to <em>yourself</em></div>
+              <div class="home-card-meta">
+                <span>2 min · Journal</span>
+                <span>→</span>
+              </div>
+            </div>
+
+            <div class="home-card mirror">
+              <div class="home-card-shape"></div>
+              <div class="home-card-label">In 3 days</div>
+              <div class="home-card-title">Your next <em style="font-style:italic;">Mirror Session</em></div>
+              <div class="home-card-meta">
+                <span>The Mirror has 4 notes</span>
+                <span>→</span>
+              </div>
+            </div>
+
+            <div class="home-list">
+              <div class="home-list-row"><div class="day">Wed</div><div class="snippet">"I noticed I was holding my breath…"</div></div>
+              <div class="home-list-row"><div class="day">Tue</div><div class="snippet">"It happened again at dinner."</div></div>
+              <div class="home-list-row"><div class="day">Mon</div><div class="snippet">"Voice note · 1:42"</div></div>
+            </div>
+
+            <div class="tab-bar">
+              <div class="tab on"><div class="tab-icon"></div>Home</div>
+              <div class="tab"><div class="tab-icon"></div>Journal</div>
+              <div class="tab"><div class="tab-icon"></div>Chat</div>
+              <div class="tab"><div class="tab-icon"></div>Map</div>
+            </div>
+          </div>
+        </div>
+        <div class="phone-caption"><strong>Home</strong>Calm by design. One screen, two paths.</div>
+      </div>
+
+      <!-- Journal -->
+      <div>
+        <div class="phone-shell">
+          <div class="phone-notch"></div>
+          <div class="phone-screen">
+            <div class="phone-status"><span>9:43</span><div class="dots"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div></div>
+            <div style="padding: 24px 28px 16px;">
+              <div class="home-greet-eye">Journal</div>
+              <div class="serif" style="font-size: 24px; letter-spacing: -0.01em; margin-top: 8px;">What's <em style="font-style: italic; color: var(--terra);">true</em> right now?</div>
+            </div>
+            <div style="flex:1; padding: 0 28px; display: flex; flex-direction: column;">
+              <div class="serif italic" style="color: var(--ink); font-size: 18px; line-height: 1.55; opacity: 0.85;">
+                I had that thing again where I checked his last-seen four times before he replied. It's stupid. It's not stupid. I don't know what to do with it.
+              </div>
+              <div style="display: flex; gap: 8px; margin-top: 20px; flex-wrap: wrap;">
+                <div style="font-size: 11px; padding: 6px 12px; background: rgba(217,119,87,0.1); border-radius: 999px; color: var(--terra);">#anxious-spiral</div>
+                <div style="font-size: 11px; padding: 6px 12px; background: rgba(0,0,0,0.05); border-radius: 999px; color: var(--muted);">#partner</div>
+                <div style="font-size: 11px; padding: 6px 12px; background: rgba(0,0,0,0.05); border-radius: 999px; color: var(--muted);">— auto-tagged</div>
+              </div>
+              <div style="margin-top: auto; margin-bottom: 16px; display: flex; gap: 12px;">
+                <div style="flex:1; background: var(--ink); color: var(--cream); text-align:center; padding: 14px; border-radius: 999px; font-size: 14px;">Save</div>
+                <div style="width: 48px; height: 48px; border-radius: 50%; background: var(--terra); display:flex; align-items:center; justify-content:center; color: var(--cream);">●</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="phone-caption"><strong>Journal</strong>Free-write or voice. Auto-tagged silently.</div>
+      </div>
+
+      <!-- Therapist Chat -->
+      <div>
+        <div class="phone-shell">
+          <div class="phone-notch"></div>
+          <div class="phone-screen">
+            <div class="phone-status"><span>9:45</span><div class="dots"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div></div>
+            <div class="chat-head">
+              <div class="chat-avatar"></div>
+              <div class="chat-name">The Therapist<small>Conscious layer</small></div>
+            </div>
+            <div class="chat-body">
+              <div class="bubble them">What's on your mind tonight?</div>
+              <div class="bubble me">I keep checking if he's online. I hate that I do this.</div>
+              <div class="bubble them">The hating is interesting. <em>What feels worse — that he's not replying, or that you're the one watching?</em></div>
+              <div class="typing"><span></span><span></span><span></span></div>
+            </div>
+            <div class="chat-input">
+              Reply to The Therapist…
+              <div class="chat-input-mic"></div>
+            </div>
+          </div>
+        </div>
+        <div class="phone-caption"><strong>Therapist (Conscious)</strong>Warm. Socratic. Never confrontational.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="glow-line"></div>
+
+<!-- ========== MIRROR SESSION (THE MOMENT) ========== -->
+<section style="background: linear-gradient(180deg, var(--sand) 0%, #E8DFD0 100%);">
+  <div class="wrap">
+    <div class="section-head">
+      <div>
+        <div class="section-num">03 — Weekly</div>
+        <h2 class="section-title">The <em class="italic serif">Mirror</em> speaks.</h2>
+      </div>
+      <p class="section-desc">Once a week. Three observations. Each one quoted back from your own words. The Mirror cannot flatter you — it can only show you what you already wrote.</p>
+    </div>
+
+    <div class="phones-row">
+      <!-- Mirror intro -->
+      <div>
+        <div class="phone-shell">
+          <div class="phone-notch"></div>
+          <div class="phone-screen dark">
+            <div class="phone-status"><span>9:41</span><div class="dots"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div></div>
+            <div style="padding: 40px 28px; flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center;">
+              <div class="mirror-orb"></div>
+              <div class="mirror-eye">Mirror Session · Week 12</div>
+              <div class="serif" style="font-size: 36px; line-height: 1.05; margin: 16px 0; letter-spacing: -0.02em;">I noticed <em style="font-style: italic; color: var(--lavender-soft);">three things</em>.</div>
+              <p style="color: var(--lavender); font-size: 14px; line-height:1.55; max-width: 280px;">Each is something you wrote yourself. I am only showing it back.</p>
+              <div style="margin-top: 40px; background: var(--cream); color: var(--midnight); padding: 14px 36px; border-radius: 999px; font-size: 14px;">Show me</div>
+            </div>
+          </div>
+        </div>
+        <div class="phone-caption"><strong>The reveal</strong>The orb is the Mirror's presence</div>
+      </div>
+
+      <!-- Mirror observation -->
+      <div>
+        <div class="phone-shell">
+          <div class="phone-notch"></div>
+          <div class="phone-screen dark">
+            <div class="phone-status"><span>9:42</span><div class="dots"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div></div>
+            <div class="mirror-head">
+              <div class="mirror-eye">Observation 1 of 3</div>
+              <div class="mirror-title">On <em>distance</em>.</div>
+            </div>
+            <div class="mirror-card">
+              <div class="mirror-quote">"You've written about your mother 14 times this month. You've never called her 'mom.' Always 'my mother.' What might that distance protect?"</div>
+              <div class="mirror-evidence">
+                <strong>Evidence —</strong> 14 mentions across journal entries from June 3–25. The shift from "mom" → "my mother" happened on March 14, the week after the call about your father.
+              </div>
+              <div class="mirror-actions">
+                <div class="pill on">Lands</div>
+                <div class="pill">Not yet</div>
+                <div class="pill">Say more</div>
+              </div>
+            </div>
+            <div style="padding: 0 24px 20px; text-align:center;">
+              <div style="font-size: 12px; color: var(--lavender); opacity: 0.7;">Swipe for next observation →</div>
+            </div>
+            <div class="tab-bar">
+              <div class="tab"><div class="tab-icon"></div>Home</div>
+              <div class="tab"><div class="tab-icon"></div>Journal</div>
+              <div class="tab"><div class="tab-icon"></div>Chat</div>
+              <div class="tab on"><div class="tab-icon"></div>Mirror</div>
+            </div>
+          </div>
+        </div>
+        <div class="phone-caption"><strong>The observation</strong>Sharp. Evidenced. Compassionate.</div>
+      </div>
+
+      <!-- Mirror integration -->
+      <div>
+        <div class="phone-shell">
+          <div class="phone-notch"></div>
+          <div class="phone-screen dark">
+            <div class="phone-status"><span>9:48</span><div class="dots"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div></div>
+            <div class="mirror-head">
+              <div class="mirror-eye">Session complete</div>
+              <div class="mirror-title">Sit <em>with this</em>.</div>
+              <div class="mirror-sub">There's nothing to do tonight.</div>
+            </div>
+
+            <div class="mirror-card" style="background: linear-gradient(160deg, rgba(217,119,87,0.15), rgba(217,119,87,0.03)); border-color: rgba(217,119,87,0.25);">
+              <div style="font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--terra-soft); margin-bottom: 12px;">Optional · Tomorrow</div>
+              <div class="serif italic" style="font-size: 17px; line-height: 1.45; color: var(--cream);">"Write your mother a letter you'll never send. Use her name."</div>
+              <div style="margin-top: 16px; font-size: 12px; color: var(--lavender);">Prompt designed by your Therapist, in response.</div>
+            </div>
+
+            <div style="padding: 8px 24px 0;">
+              <div style="font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--lavender); margin-bottom: 12px;">Your patterns, this month</div>
+              <div style="display:flex; gap: 6px; height: 80px; align-items: flex-end;">
+                <div style="flex:1; background: linear-gradient(180deg, var(--lavender-soft), transparent); height: 30%; border-radius: 4px;"></div>
+                <div style="flex:1; background: linear-gradient(180deg, var(--lavender-soft), transparent); height: 45%; border-radius: 4px;"></div>
+                <div style="flex:1; background: linear-gradient(180deg, var(--lavender-soft), transparent); height: 65%; border-radius: 4px;"></div>
+                <div style="flex:1; background: linear-gradient(180deg, var(--terra-soft), transparent); height: 80%; border-radius: 4px;"></div>
+                <div style="flex:1; background: linear-gradient(180deg, var(--terra-soft), transparent); height: 90%; border-radius: 4px;"></div>
+                <div style="flex:1; background: linear-gradient(180deg, var(--terra-soft), var(--terra)); height: 100%; border-radius: 4px;"></div>
+              </div>
+              <div style="display:flex; justify-content:space-between; font-size: 10px; color: var(--lavender); margin-top: 6px;">
+                <span>W7</span><span>W8</span><span>W9</span><span>W10</span><span>W11</span><span>W12</span>
+              </div>
+            </div>
+
+            <div class="tab-bar">
+              <div class="tab"><div class="tab-icon"></div>Home</div>
+              <div class="tab"><div class="tab-icon"></div>Journal</div>
+              <div class="tab"><div class="tab-icon"></div>Chat</div>
+              <div class="tab on"><div class="tab-icon"></div>Mirror</div>
+            </div>
+          </div>
+        </div>
+        <div class="phone-caption"><strong>Integration</strong>Therapist responds with a gentle prompt</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="glow-line"></div>
+
+<!-- ========== MAP (MULTIMODAL) ========== -->
+<section>
+  <div class="wrap">
+    <div class="section-head">
+      <div>
+        <div class="section-num">04 — Monthly</div>
+        <h2 class="section-title">Your attachment <em class="italic serif">landscape</em>.</h2>
+      </div>
+      <p class="section-desc">Once a month, Gemini's image model generates a visual of your inner terrain — colors, density, drift over time. Shareable. Quietly viral.</p>
+    </div>
+
+    <div class="phones-row">
+      <div>
+        <div class="phone-shell">
+          <div class="phone-notch"></div>
+          <div class="phone-screen map-screen">
+            <div class="phone-status"><span>9:41</span><div class="dots"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div></div>
+            <div class="map-head">
+              <div class="map-eye">June · Month 3</div>
+              <div class="map-title">Your <em>attachment</em><br/>landscape.</div>
+            </div>
+            <div class="map-canvas"></div>
+            <div class="map-legend">
+              <div class="map-legend-row"><span class="legend-dot" style="background: var(--terra);"></span>Anxious · 12 entries</div>
+              <div class="map-legend-row"><span class="legend-dot" style="background: var(--lavender);"></span>Avoidant · 7 entries</div>
+              <div class="map-legend-row"><span class="legend-dot" style="background: var(--ink);"></span>Secure · 19 <span style="color: #4A9D5F; margin-left:6px;">↑ from May</span></div>
+            </div>
+            <div style="padding: 8px 20px 16px; display:flex; gap: 8px; margin-top: auto;">
+              <div style="flex:1; padding: 10px; text-align:center; border: 1px solid var(--line); border-radius: 999px; font-size: 12px;">Compare</div>
+              <div style="padding: 10px 20px; background: var(--ink); color: var(--cream); border-radius: 999px; font-size: 12px;">Share</div>
+            </div>
+          </div>
+        </div>
+        <div class="phone-caption"><strong>Attachment Map</strong>Generated monthly · uniquely yours</div>
+      </div>
+
+      <div style="grid-column: span 2;">
+        <div style="background: var(--cream); border-radius: 28px; padding: 48px; height: 100%; min-height: 660px; display: flex; flex-direction: column; justify-content: center; box-shadow: 0 20px 50px -20px rgba(26,24,20,0.15);">
+          <div class="section-num" style="margin-bottom: 16px;">Why this is the moat</div>
+          <h3 class="serif" style="font-size: 36px; line-height: 1.15; letter-spacing: -0.02em; margin-bottom: 32px;">The longer you stay, the <em class="italic" style="color: var(--terra);">sharper</em> the Mirror becomes.</h3>
+
+          <div style="display:grid; gap: 20px;">
+            <div style="display:flex; gap: 16px; padding-bottom: 20px; border-bottom: 1px solid var(--line);">
+              <div style="font-family: 'Instrument Serif', serif; font-style:italic; font-size: 32px; color: var(--terra); line-height: 1; min-width: 48px;">01</div>
+              <div>
+                <div style="font-weight: 500; margin-bottom: 6px;">Longitudinal data flywheel</div>
+                <div style="color: var(--muted); font-size: 14px; line-height: 1.55;">Six months in, the Mirror knows your patterns. Switching cost = rebuild your unconscious from scratch.</div>
+              </div>
+            </div>
+            <div style="display:flex; gap: 16px; padding-bottom: 20px; border-bottom: 1px solid var(--line);">
+              <div style="font-family: 'Instrument Serif', serif; font-style:italic; font-size: 32px; color: var(--terra); line-height: 1; min-width: 48px;">02</div>
+              <div>
+                <div style="font-weight: 500; margin-bottom: 6px;">Two-agent architecture as IP</div>
+                <div style="color: var(--muted); font-size: 14px; line-height: 1.55;">Separating compassionate engagement from pattern recognition is a new pattern for AI wellness. Publish it. Own the category.</div>
+              </div>
+            </div>
+            <div style="display:flex; gap: 16px; padding-bottom: 20px; border-bottom: 1px solid var(--line);">
+              <div style="font-family: 'Instrument Serif', serif; font-style:italic; font-size: 32px; color: var(--terra); line-height: 1; min-width: 48px;">03</div>
+              <div>
+                <div style="font-weight: 500; margin-bottom: 6px;">Attachment is the wedge</div>
+                <div style="color: var(--muted); font-size: 14px; line-height: 1.55;">Culturally hot. Clinically validated. Nobody owns the AI category yet. Calm has meditation. Replika has parasocial. Attachment is open.</div>
+              </div>
+            </div>
+            <div style="display:flex; gap: 16px;">
+              <div style="font-family: 'Instrument Serif', serif; font-style:italic; font-size: 32px; color: var(--terra); line-height: 1; min-width: 48px;">04</div>
+              <div>
+                <div style="font-weight: 500; margin-bottom: 6px;">The Map is the growth loop</div>
+                <div style="color: var(--muted); font-size: 14px; line-height: 1.55;">Monthly AI-generated visual is uniquely yours, shareable, and slightly mysterious. Built-in word-of-mouth.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== ARCHITECTURE ========== -->
+<section id="arch" class="arch">
+  <div class="wrap arch-wrap">
+    <div class="section-num" style="color: var(--lavender);">05 — How it works</div>
+    <h2>Two agents. <em>One self</em>.</h2>
+    <p class="lede">Built on Vertex AI Managed Agents (I/O 2026). The Therapist and the Mirror share memory through Firestore + Vertex AI vector search, but speak with different voices, on different cadences.</p>
+
+    <div class="arch-grid">
+      <div class="arch-card therapist">
+        <div class="arch-label">Conscious Layer</div>
+        <div class="arch-name">The <em>Therapist</em></div>
+        <div class="arch-desc">Warm, Socratic, attachment-informed. Real-time chat and journal companion. Never confronts. Asks the next gentle question.</div>
+        <div class="arch-tag">Gemini · Real-time</div>
+      </div>
+      <div class="arch-bridge"></div>
+      <div class="arch-card mirror">
+        <div class="arch-label">Unconscious Layer</div>
+        <div class="arch-name">The <em>Mirror</em></div>
+        <div class="arch-desc">Runs across your full journal + chat history. Detects defenses, omissions, repetitions. Speaks once a week with evidence the user wrote themselves.</div>
+        <div class="arch-tag">Vertex Agent · Weekly</div>
+      </div>
+    </div>
+
+    <div class="stack">
+      <div class="stack-item">
+        <h4>Gemini 2.x</h4>
+        <p>Multi-turn empathetic dialogue for the Therapist. Multimodal voice + image input.</p>
+      </div>
+      <div class="stack-item">
+        <h4>Vertex AI Managed Agents</h4>
+        <p>Orchestrates Therapist ↔ Mirror. Shared memory. Independent personas.</p>
+      </div>
+      <div class="stack-item">
+        <h4>Imagen / Gemini multimodal</h4>
+        <p>Generates the monthly attachment landscape from your data signals.</p>
+      </div>
+      <div class="stack-item">
+        <h4>Confidential Computing</h4>
+        <p>Sensitive journal content processed in enclaves. Privacy as a brand pillar.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== FOOTER ========== -->
+<footer class="foot">
+  <div class="wrap">
+    <em>"What if your unconscious had its own LLM?"</em>
+    Mirror — a hackathon concept, built on Google Cloud. Attachment-informed AI for self-inquiry.
+  </div>
+</footer>
+
+</body>
+</html>

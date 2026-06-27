@@ -1,0 +1,1157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Mirror — Interactive Demo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --sand: #F5EFE6;
+    --cream: #FAF6EF;
+    --ink: #1A1814;
+    --muted: #6B655B;
+    --terra: #D97757;
+    --terra-soft: #E8B89A;
+    --midnight: #0E0D1A;
+    --midnight-2: #16142A;
+    --lavender: #9B8BB4;
+    --lavender-soft: #C7BCD9;
+    --line: rgba(26,24,20,0.08);
+    --line-dark: rgba(255,255,255,0.08);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    height: 100%;
+    font-family: 'Inter', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    color: var(--ink);
+    overflow: hidden;
+  }
+  body {
+    background:
+      radial-gradient(ellipse 50% 40% at 30% 30%, rgba(217,119,87,0.22), transparent 60%),
+      radial-gradient(ellipse 50% 40% at 75% 75%, rgba(155,139,180,0.25), transparent 60%),
+      #14121C;
+    color: #E8E3D8;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    min-height: 100vh; padding: 24px;
+    position: relative;
+  }
+  body::before {
+    content: ''; position: absolute; inset: 0; pointer-events: none; opacity: 0.4;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.06 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+  .serif { font-family: 'Instrument Serif', serif; font-weight: 400; letter-spacing: -0.01em; }
+  .italic { font-style: italic; }
+
+  /* ============ STAGE ============ */
+  .stage {
+    position: relative;
+    display: flex; flex-direction: column; align-items: center; gap: 28px;
+    z-index: 1;
+  }
+  .brand-bar {
+    display: flex; align-items: center; gap: 12px;
+    font-size: 13px; letter-spacing: 0.02em; color: rgba(232,227,216,0.7);
+  }
+  .brand-dot {
+    width: 24px; height: 24px; border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #FCE9D8, var(--terra) 65%, var(--midnight));
+    box-shadow: 0 0 24px rgba(217,119,87,0.5);
+  }
+  .brand-name { font-family: 'Instrument Serif', serif; font-style: italic; font-size: 22px; color: #E8E3D8; }
+  .brand-tag { font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; opacity: 0.5; padding-left: 12px; border-left: 1px solid rgba(232,227,216,0.2); }
+
+  /* ============ PHONE FRAME ============ */
+  .phone {
+    width: 390px; height: 800px;
+    border-radius: 56px;
+    background: #0a0908;
+    padding: 14px;
+    box-shadow:
+      0 0 0 1px rgba(255,255,255,0.06),
+      0 50px 120px -30px rgba(0,0,0,0.7),
+      0 30px 60px -20px rgba(217,119,87,0.15),
+      inset 0 0 0 2px #2a2722;
+    position: relative;
+  }
+  .phone::before {
+    content: ''; position: absolute; top: -2px; left: 50%; transform: translateX(-50%);
+    width: 60%; height: 4px; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+    border-radius: 0 0 4px 4px;
+  }
+  .screen {
+    width: 100%; height: 100%;
+    border-radius: 44px;
+    overflow: hidden;
+    position: relative;
+    background: var(--cream);
+    color: var(--ink);
+  }
+  .notch {
+    position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
+    width: 110px; height: 32px;
+    background: #000;
+    border-radius: 16px; z-index: 30;
+  }
+
+  /* Status bar */
+  .status {
+    height: 54px;
+    display: flex; justify-content: space-between; align-items: flex-end;
+    padding: 0 32px 8px;
+    font-size: 14px; font-weight: 600;
+    position: relative; z-index: 5;
+  }
+  .status .right { display: flex; gap: 6px; align-items: center; }
+  .status svg { width: 16px; height: 12px; }
+  .dark-mode .status, .screen.dark .status { color: var(--cream); }
+
+  /* ============ SCREEN STATES ============ */
+  .screen-content {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.5s ease;
+  }
+  .screen-content.active { opacity: 1; pointer-events: auto; }
+  .screen-content.dark { background: var(--midnight); color: var(--cream); }
+
+  /* Hint pulse on tappable areas */
+  .tap-hint {
+    position: absolute;
+    width: 64px; height: 64px;
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 50;
+  }
+  .tap-hint::before, .tap-hint::after {
+    content: ''; position: absolute; inset: 0;
+    border-radius: 50%;
+    border: 2px solid var(--terra);
+    animation: ripple 2s ease-out infinite;
+  }
+  .tap-hint::after { animation-delay: 1s; }
+  @keyframes ripple {
+    0% { transform: scale(0.5); opacity: 1; }
+    100% { transform: scale(1.5); opacity: 0; }
+  }
+  .dark .tap-hint::before, .dark .tap-hint::after { border-color: var(--lavender-soft); }
+
+  /* ============ 1. WELCOME ============ */
+  .welcome-body {
+    flex: 1; padding: 60px 36px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center;
+  }
+  .orb-large {
+    width: 160px; height: 160px; border-radius: 50%;
+    background:
+      radial-gradient(circle at 30% 25%, #FCE9D8, transparent 50%),
+      radial-gradient(circle at 70% 75%, var(--terra-soft), transparent 60%),
+      radial-gradient(circle at 50% 50%, var(--terra), var(--midnight) 100%);
+    box-shadow: 0 20px 80px rgba(217,119,87,0.35), inset -10px -20px 40px rgba(0,0,0,0.3);
+    margin-bottom: 48px;
+    animation: float 6s ease-in-out infinite;
+  }
+  @keyframes float {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    50% { transform: translateY(-8px) rotate(4deg); }
+  }
+  .welcome-title {
+    font-family: 'Instrument Serif', serif;
+    font-size: 52px; line-height: 1; letter-spacing: -0.02em;
+    margin-bottom: 20px;
+  }
+  .welcome-title em { font-style: italic; color: var(--terra); }
+  .welcome-sub {
+    color: var(--muted); font-size: 15px; line-height: 1.6;
+    max-width: 280px; margin-bottom: 56px;
+  }
+  .cta {
+    background: var(--ink); color: var(--cream);
+    padding: 16px 40px;
+    border-radius: 999px; font-size: 15px;
+    cursor: pointer; border: none;
+    font-family: inherit;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    position: relative;
+  }
+  .cta:hover, .cta:active { transform: scale(0.97); box-shadow: 0 8px 30px rgba(0,0,0,0.2); }
+  .cta-light { background: var(--cream); color: var(--midnight); }
+  .welcome-meta { margin-top: 24px; font-size: 12px; color: var(--muted); }
+
+  /* ============ 2. ONBOARDING ============ */
+  .ob-body { padding: 70px 32px 40px; flex: 1; display: flex; flex-direction: column; }
+  .ob-step { font-size: 11px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--muted); }
+  .ob-progress { display: flex; gap: 4px; margin: 14px 0 36px; }
+  .ob-progress span { flex: 1; height: 2px; background: var(--line); border-radius: 1px; transition: background 0.4s; }
+  .ob-progress span.on { background: var(--terra); }
+  .ob-question {
+    font-family: 'Instrument Serif', serif;
+    font-size: 34px; line-height: 1.1; letter-spacing: -0.01em;
+    margin-bottom: 28px;
+  }
+  .ob-question em { font-style: italic; color: var(--terra); }
+  .ob-field {
+    flex: 1; padding: 20px;
+    background: rgba(217,119,87,0.06);
+    border: 1px dashed var(--terra-soft);
+    border-radius: 20px;
+    font-size: 15px; line-height: 1.55;
+    color: var(--ink); font-style: italic;
+    min-height: 200px;
+    position: relative;
+  }
+  .ob-field-text::after {
+    content: '|'; color: var(--terra); margin-left: 2px;
+    animation: caret 0.9s steps(2) infinite;
+  }
+  @keyframes caret { 50% { opacity: 0; } }
+  .ob-foot { display: flex; justify-content: space-between; align-items: center; margin-top: 24px; }
+  .ob-mic {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 13px; color: var(--muted);
+  }
+  .ob-mic-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--terra); animation: pulse-dot 1.2s ease-in-out infinite; }
+  @keyframes pulse-dot { 0%, 100% { opacity: 0.4; transform: scale(1); } 50% { opacity: 1; transform: scale(1.4); } }
+
+  /* ============ 3. RESULT REVEAL ============ */
+  .result-body { padding: 80px 36px 40px; flex: 1; display: flex; flex-direction: column; }
+  .result-eye {
+    font-size: 11px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--muted);
+    opacity: 0; animation: fadeUp 0.6s ease-out 0.3s forwards;
+  }
+  .result-title {
+    font-family: 'Instrument Serif', serif;
+    font-size: 56px; line-height: 0.95; letter-spacing: -0.03em;
+    margin-top: 14px;
+    opacity: 0; animation: fadeUp 0.8s ease-out 0.7s forwards;
+  }
+  .result-title em { font-style: italic; color: var(--terra); }
+  .result-desc {
+    color: var(--muted); font-size: 14px; line-height: 1.6;
+    margin-top: 20px;
+    opacity: 0; animation: fadeUp 0.8s ease-out 1.3s forwards;
+  }
+  .result-note {
+    margin-top: 32px; padding: 24px;
+    background: rgba(217,119,87,0.06);
+    border: 1px solid rgba(217,119,87,0.15);
+    border-radius: 20px;
+    opacity: 0; animation: fadeUp 0.8s ease-out 2s forwards;
+  }
+  .result-note-label { font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
+  .result-note-quote { font-family: 'Instrument Serif', serif; font-style: italic; font-size: 17px; line-height: 1.4; }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .result-cta { margin-top: auto; padding-top: 32px; text-align: center;
+    opacity: 0; animation: fadeUp 0.8s ease-out 2.8s forwards;
+  }
+
+  /* ============ 4. HOME ============ */
+  .home-head { padding: 70px 28px 18px; }
+  .home-eye { font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); }
+  .home-greet { font-family: 'Instrument Serif', serif; font-size: 32px; line-height: 1.1; letter-spacing: -0.01em; margin-top: 8px; }
+  .home-greet em { font-style: italic; color: var(--terra); }
+  .home-card {
+    margin: 0 22px 14px; padding: 22px;
+    border-radius: 22px;
+    background: linear-gradient(135deg, #FCE9D8, #F5DBC5);
+    position: relative; overflow: hidden;
+    cursor: pointer;
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
+  }
+  .home-card:hover { transform: translateY(-2px); box-shadow: 0 12px 30px rgba(0,0,0,0.08); }
+  .home-card:active { transform: scale(0.98); }
+  .home-card.mirror-c {
+    background: linear-gradient(135deg, #1F1A36, #0E0D1A);
+    color: var(--cream);
+    border: 1px solid rgba(155,139,180,0.2);
+  }
+  .home-card-label { font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; opacity: 0.65; }
+  .home-card-title { font-family: 'Instrument Serif', serif; font-size: 22px; line-height: 1.2; margin-top: 8px; }
+  .home-card-title em { font-style: italic; }
+  .home-card-meta { display: flex; justify-content: space-between; margin-top: 14px; font-size: 11px; opacity: 0.7; }
+  .home-card-shape {
+    position: absolute; right: -24px; top: -24px; width: 110px; height: 110px;
+    border-radius: 50%; background: radial-gradient(circle, rgba(255,255,255,0.4), transparent 70%);
+  }
+  .home-card.mirror-c .home-card-shape { background: radial-gradient(circle, rgba(199,188,217,0.3), transparent 70%); }
+  .home-list { padding: 6px 24px 0; }
+  .home-list-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 11px 4px; border-top: 1px solid var(--line); font-size: 13px;
+  }
+  .home-list-row:first-child { border-top: none; }
+  .home-list-row .day { font-family: 'Instrument Serif', serif; font-style: italic; color: var(--muted); font-size: 15px; }
+  .home-list-row .snippet { color: var(--ink); max-width: 65%; text-align: right; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  /* ============ TAB BAR ============ */
+  .tab-bar {
+    margin-top: auto; padding: 14px 24px 30px;
+    display: flex; justify-content: space-around;
+    border-top: 1px solid var(--line);
+    background: rgba(250,246,239,0.7); backdrop-filter: blur(20px);
+  }
+  .screen-content.dark .tab-bar { border-color: var(--line-dark); background: rgba(14,13,26,0.7); }
+  .tab { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 10px; color: var(--muted); cursor: pointer; padding: 4px 12px; border-radius: 12px; transition: background 0.2s; }
+  .tab svg { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 1.5; }
+  .tab.on { color: var(--ink); }
+  .screen-content.dark .tab { color: var(--lavender); }
+  .screen-content.dark .tab.on { color: var(--cream); }
+  .tab:hover { background: rgba(0,0,0,0.03); }
+  .screen-content.dark .tab:hover { background: rgba(255,255,255,0.05); }
+
+  /* ============ 5. CHAT (THERAPIST) ============ */
+  .chat-head {
+    padding: 70px 28px 16px;
+    display: flex; align-items: center; gap: 12px;
+    border-bottom: 1px solid var(--line);
+  }
+  .chat-back {
+    width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;
+    cursor: pointer; color: var(--muted);
+  }
+  .chat-avatar {
+    width: 40px; height: 40px; border-radius: 50%;
+    background: radial-gradient(circle at 30% 30%, #FCE9D8, var(--terra) 80%);
+  }
+  .chat-name { font-family: 'Instrument Serif', serif; font-size: 19px; }
+  .chat-name small { display: block; font-family: 'Inter', sans-serif; font-size: 10px; color: var(--muted); letter-spacing: 0.12em; text-transform: uppercase; margin-top: 2px; }
+  .chat-body {
+    flex: 1; padding: 20px 22px;
+    display: flex; flex-direction: column; gap: 12px;
+    overflow-y: auto;
+  }
+  .bubble {
+    max-width: 80%; padding: 12px 16px;
+    border-radius: 20px; font-size: 14px; line-height: 1.45;
+    animation: bubbleIn 0.5s ease-out;
+  }
+  .bubble.them { background: var(--sand); color: var(--ink); border-bottom-left-radius: 6px; align-self: flex-start; }
+  .bubble.me { align-self: flex-end; background: var(--ink); color: var(--cream); border-bottom-right-radius: 6px; }
+  .bubble em { font-family: 'Instrument Serif', serif; font-style: italic; font-size: 15px; }
+  @keyframes bubbleIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .typing { display: flex; gap: 4px; padding: 14px 16px; background: var(--sand); border-radius: 18px; width: fit-content; align-self: flex-start; }
+  .typing span { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); opacity: 0.4; animation: typingdot 1.4s infinite; }
+  .typing span:nth-child(2) { animation-delay: 0.2s; }
+  .typing span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes typingdot { 0%, 60%, 100% { opacity: 0.4; transform: translateY(0); } 30% { opacity: 1; transform: translateY(-4px); } }
+
+  .chat-input-wrap { padding: 0 22px 18px; }
+  .quick-replies { display: flex; gap: 8px; margin-bottom: 12px; overflow-x: auto; }
+  .quick-reply {
+    flex-shrink: 0; padding: 9px 14px; font-size: 12px;
+    background: var(--cream); border: 1px solid var(--line);
+    border-radius: 999px; cursor: pointer;
+    transition: background 0.2s, transform 0.15s;
+  }
+  .quick-reply:hover { background: var(--sand); }
+  .quick-reply:active { transform: scale(0.96); }
+  .chat-input {
+    padding: 12px 18px;
+    background: var(--cream); border: 1px solid var(--line); border-radius: 999px;
+    display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--muted);
+  }
+  .chat-input-mic { margin-left: auto; width: 28px; height: 28px; border-radius: 50%; background: var(--terra); display: flex; align-items: center; justify-content: center; color: white; }
+
+  /* ============ 6. MIRROR INTRO ============ */
+  .mirror-intro {
+    padding: 80px 36px 40px;
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; text-align: center;
+  }
+  .orb-mirror {
+    width: 140px; height: 140px; border-radius: 50%;
+    background:
+      radial-gradient(circle at 35% 30%, rgba(199,188,217,0.95), transparent 50%),
+      radial-gradient(circle at 65% 70%, rgba(217,119,87,0.45), transparent 55%),
+      radial-gradient(circle at 50% 50%, #2A2548, #0E0D1A 80%);
+    box-shadow: 0 0 80px rgba(155,139,180,0.5), 0 0 140px rgba(155,139,180,0.3), inset -10px -20px 40px rgba(0,0,0,0.5);
+    margin-bottom: 40px;
+    animation: orb 7s ease-in-out infinite;
+  }
+  @keyframes orb {
+    0%, 100% { transform: scale(1) rotate(0deg); }
+    50% { transform: scale(1.05) rotate(8deg); }
+  }
+  .mirror-eye {
+    font-size: 11px; letter-spacing: 0.24em; text-transform: uppercase;
+    color: var(--lavender); margin-bottom: 14px;
+  }
+  .mirror-title {
+    font-family: 'Instrument Serif', serif;
+    font-size: 44px; line-height: 1; letter-spacing: -0.02em;
+    margin-bottom: 20px;
+  }
+  .mirror-title em { font-style: italic; color: var(--lavender-soft); }
+  .mirror-sub {
+    color: var(--lavender); font-size: 14px; line-height: 1.6;
+    max-width: 260px; margin-bottom: 56px; opacity: 0.85;
+  }
+
+  /* ============ 7. MIRROR OBSERVATION ============ */
+  .obs-head { padding: 70px 28px 14px; }
+  .obs-head .mirror-eye { margin-bottom: 8px; }
+  .obs-title { font-family: 'Instrument Serif', serif; font-size: 34px; line-height: 1.05; letter-spacing: -0.02em; }
+  .obs-title em { font-style: italic; color: var(--lavender-soft); }
+  .obs-card {
+    margin: 8px 24px 14px; padding: 24px;
+    border-radius: 22px;
+    background: linear-gradient(160deg, rgba(155,139,180,0.16), rgba(155,139,180,0.04));
+    border: 1px solid rgba(155,139,180,0.22);
+  }
+  .obs-quote {
+    font-family: 'Instrument Serif', serif;
+    font-style: italic; font-size: 19px; line-height: 1.45;
+    color: var(--cream);
+  }
+  .obs-evidence {
+    margin-top: 18px; padding-top: 16px;
+    border-top: 1px solid rgba(155,139,180,0.2);
+    font-size: 12px; color: var(--lavender); line-height: 1.6;
+  }
+  .obs-evidence strong { color: var(--cream); font-weight: 500; }
+  .obs-actions { display: flex; gap: 6px; margin-top: 18px; }
+  .pill {
+    flex: 1; text-align: center;
+    padding: 11px 6px; border-radius: 999px;
+    font-size: 12px; white-space: nowrap;
+    border: 1px solid rgba(155,139,180,0.3);
+    color: var(--lavender-soft);
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  .pill:hover { background: rgba(155,139,180,0.1); }
+  .pill.on, .pill.selected { background: var(--cream); color: var(--midnight); border-color: var(--cream); }
+
+  .obs-progress {
+    padding: 8px 28px;
+    display: flex; align-items: center; gap: 14px;
+    font-size: 11px; color: var(--lavender); opacity: 0.7;
+  }
+  .obs-progress-bar { flex: 1; height: 2px; background: rgba(155,139,180,0.2); border-radius: 1px; overflow: hidden; }
+  .obs-progress-fill { height: 100%; background: var(--lavender-soft); border-radius: 1px; transition: width 0.5s ease; }
+
+  /* ============ 8. INTEGRATION ============ */
+  .integ-head { padding: 70px 28px 14px; }
+  .integ-card {
+    margin: 0 24px 14px; padding: 24px;
+    border-radius: 22px;
+    background: linear-gradient(160deg, rgba(217,119,87,0.16), rgba(217,119,87,0.03));
+    border: 1px solid rgba(217,119,87,0.25);
+  }
+  .integ-card-label {
+    font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase;
+    color: var(--terra-soft); margin-bottom: 12px;
+  }
+  .integ-card-quote {
+    font-family: 'Instrument Serif', serif;
+    font-style: italic; font-size: 18px; line-height: 1.45;
+    color: var(--cream);
+  }
+  .integ-card-footer { margin-top: 14px; font-size: 11px; color: var(--lavender); }
+
+  .chart-wrap { padding: 12px 28px 8px; }
+  .chart-label { font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--lavender); margin-bottom: 12px; }
+  .chart-bars { display: flex; gap: 5px; height: 70px; align-items: flex-end; }
+  .chart-bar { flex: 1; border-radius: 4px; opacity: 0; animation: barRise 0.6s ease-out forwards; }
+  @keyframes barRise { to { opacity: 1; } }
+  .chart-axis { display: flex; justify-content: space-between; font-size: 9px; color: var(--lavender); margin-top: 6px; }
+
+  /* ============ 9. MAP ============ */
+  .map-content { background: linear-gradient(180deg, #FAF6EF 0%, #EFE5D6 100%); }
+  .map-head { padding: 70px 28px 14px; }
+  .map-eye { font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted); }
+  .map-title { font-family: 'Instrument Serif', serif; font-size: 28px; line-height: 1.1; margin-top: 8px; }
+  .map-title em { font-style: italic; color: var(--terra); }
+  .map-canvas {
+    margin: 8px 24px; height: 240px;
+    border-radius: 24px;
+    background: linear-gradient(135deg, #FCE9D8, #C7BCD9 55%, #2A2548);
+    position: relative; overflow: hidden;
+    box-shadow: inset 0 0 60px rgba(26,24,20,0.15);
+  }
+  .map-canvas::before {
+    content: ''; position: absolute; inset: 0;
+    background:
+      radial-gradient(circle at 25% 30%, rgba(255,255,255,0.6), transparent 25%),
+      radial-gradient(circle at 70% 55%, rgba(217,119,87,0.4), transparent 30%),
+      radial-gradient(circle at 50% 80%, rgba(42,37,72,0.5), transparent 35%);
+  }
+  .map-dot {
+    position: absolute; width: 8px; height: 8px; border-radius: 50%;
+    opacity: 0; animation: dotIn 1s ease-out forwards;
+    box-shadow: 0 0 16px currentColor;
+  }
+  @keyframes dotIn { to { opacity: 1; } }
+  .map-legend { padding: 16px 28px 8px; display: grid; gap: 10px; }
+  .map-legend-row { display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--muted); white-space: nowrap; }
+  .map-legend-row .green-up { color: #4A9D5F; margin-left: 4px; }
+  .legend-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+  .map-foot { padding: 8px 24px 18px; display: flex; gap: 8px; margin-top: auto; }
+  .map-btn { flex: 1; padding: 12px; text-align: center; font-size: 13px; border-radius: 999px; cursor: pointer; transition: all 0.2s; }
+  .map-btn.outline { border: 1px solid var(--line); }
+  .map-btn.outline:hover { background: rgba(0,0,0,0.03); }
+  .map-btn.solid { background: var(--ink); color: var(--cream); }
+
+  /* ============ JOURNAL ============ */
+  .journal-head { padding: 70px 28px 12px; }
+  .journal-body {
+    flex: 1; padding: 16px 28px;
+    display: flex; flex-direction: column;
+  }
+  .journal-prompt {
+    font-family: 'Instrument Serif', serif; font-size: 26px; letter-spacing: -0.01em;
+    margin-bottom: 22px;
+  }
+  .journal-prompt em { font-style: italic; color: var(--terra); }
+  .journal-text {
+    font-family: 'Instrument Serif', serif; font-style: italic;
+    font-size: 19px; line-height: 1.55; color: var(--ink); opacity: 0.9;
+    flex: 1;
+  }
+  .journal-text::after {
+    content: '|'; color: var(--terra); margin-left: 2px;
+    animation: caret 0.9s steps(2) infinite;
+  }
+  .journal-tags { display: flex; gap: 8px; margin: 18px 0; flex-wrap: wrap; }
+  .journal-tag {
+    font-size: 11px; padding: 6px 12px; border-radius: 999px;
+    opacity: 0; animation: fadeUp 0.5s ease-out forwards;
+  }
+  .journal-tag.primary { background: rgba(217,119,87,0.12); color: var(--terra); }
+  .journal-tag.secondary { background: rgba(0,0,0,0.05); color: var(--muted); }
+  .journal-foot {
+    padding: 0 28px 28px;
+    display: flex; gap: 12px;
+  }
+  .journal-foot .cta { flex: 1; padding: 14px; }
+  .journal-voice {
+    width: 50px; height: 50px; border-radius: 50%;
+    background: var(--terra); display: flex; align-items: center; justify-content: center;
+    color: white; cursor: pointer;
+  }
+
+  /* ============ DEMO CONTROLS ============ */
+  .demo-ctrl {
+    display: flex; gap: 16px; align-items: center;
+    background: rgba(255,255,255,0.04);
+    backdrop-filter: blur(20px);
+    padding: 12px 18px;
+    border-radius: 999px;
+    border: 1px solid rgba(255,255,255,0.08);
+    color: rgba(232,227,216,0.9);
+    font-size: 13px;
+  }
+  .ctrl-btn {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: rgba(255,255,255,0.06);
+    border: none; color: inherit; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.2s;
+  }
+  .ctrl-btn:hover { background: rgba(255,255,255,0.12); }
+  .ctrl-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+  .ctrl-step { font-family: 'Instrument Serif', serif; font-style: italic; font-size: 16px; }
+  .ctrl-divider { width: 1px; height: 20px; background: rgba(255,255,255,0.1); }
+  .ctrl-restart {
+    font-size: 12px; cursor: pointer;
+    padding: 8px 14px; border-radius: 999px;
+    background: rgba(217,119,87,0.15); color: var(--terra-soft);
+    border: 1px solid rgba(217,119,87,0.2);
+  }
+  .ctrl-restart:hover { background: rgba(217,119,87,0.25); }
+
+  /* Helper text below demo */
+  .demo-hint {
+    color: rgba(232,227,216,0.4);
+    font-size: 11px; letter-spacing: 0.18em;
+    text-transform: uppercase;
+    text-align: center;
+    margin-top: 4px;
+  }
+
+  /* Small phones - scale down */
+  @media (max-height: 900px) {
+    .phone { transform: scale(0.92); transform-origin: center; }
+  }
+  @media (max-height: 800px) {
+    .phone { transform: scale(0.82); }
+    .stage { gap: 16px; }
+  }
+  @media (max-height: 700px) {
+    .phone { transform: scale(0.72); }
+  }
+</style>
+</head>
+<body>
+
+<div class="stage">
+  <div class="brand-bar">
+    <span class="brand-dot"></span>
+    <span class="brand-name">Mirror</span>
+    <span class="brand-tag">AI for self-inquiry · Built on Gemini</span>
+  </div>
+
+  <div class="phone">
+    <div class="screen" id="screen">
+      <div class="notch"></div>
+
+      <!-- ============ 1. WELCOME ============ -->
+      <div class="screen-content active" data-screen="welcome">
+        <div class="status">
+          <span>9:41</span>
+          <div class="right">
+            <svg viewBox="0 0 16 12" fill="currentColor"><path d="M1 11h2V7H1v4zm4 0h2V4H5v7zm4 0h2V1H9v10zm4 0h2V8h-2v3z"/></svg>
+            <span>100</span>
+          </div>
+        </div>
+        <div class="welcome-body">
+          <div class="orb-large"></div>
+          <div class="welcome-title">Begin<br/><em>gently</em>.</div>
+          <p class="welcome-sub">Mirror learns who you are through stories, not questions.</p>
+          <button class="cta" onclick="go('onboard')">I'm ready →</button>
+          <div class="welcome-meta">Takes about 5 minutes</div>
+        </div>
+      </div>
+
+      <!-- ============ 2. ONBOARDING ============ -->
+      <div class="screen-content" data-screen="onboard">
+        <div class="status">
+          <span>9:42</span>
+          <div class="right">
+            <svg viewBox="0 0 16 12" fill="currentColor"><path d="M1 11h2V7H1v4zm4 0h2V4H5v7zm4 0h2V1H9v10zm4 0h2V8h-2v3z"/></svg>
+            <span>100</span>
+          </div>
+        </div>
+        <div class="ob-body">
+          <div class="ob-step">Question 3 of 5</div>
+          <div class="ob-progress">
+            <span class="on"></span><span class="on"></span><span class="on"></span><span></span><span></span>
+          </div>
+          <div class="ob-question">Tell me about a time you <em>almost</em> reached out — but didn't.</div>
+          <div class="ob-field">
+            <div class="ob-field-text" id="obText"></div>
+          </div>
+          <div class="ob-foot">
+            <div class="ob-mic">
+              <div class="ob-mic-dot"></div>
+              <span>Listening · 0:14</span>
+            </div>
+            <button class="cta" onclick="go('reveal')">Continue →</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ 3. RESULT ============ -->
+      <div class="screen-content" data-screen="reveal">
+        <div class="status">
+          <span>9:48</span>
+          <div class="right">
+            <svg viewBox="0 0 16 12" fill="currentColor"><path d="M1 11h2V7H1v4zm4 0h2V4H5v7zm4 0h2V1H9v10zm4 0h2V8h-2v3z"/></svg>
+            <span>100</span>
+          </div>
+        </div>
+        <div class="result-body">
+          <div class="result-eye">Your pattern</div>
+          <div class="result-title">Anxious-<em>leaning</em>.</div>
+          <p class="result-desc">You stay close. You over-tend. You're often the one who notices the silence before anyone else does.</p>
+          <div class="result-note">
+            <div class="result-note-label">A note from the Mirror</div>
+            <div class="result-note-quote">"You used the word 'almost' six times. We can come back to that."</div>
+          </div>
+          <div class="result-cta"><button class="cta" onclick="go('home')">Enter Mirror</button></div>
+        </div>
+      </div>
+
+      <!-- ============ 4. HOME ============ -->
+      <div class="screen-content" data-screen="home">
+        <div class="status">
+          <span>9:41</span>
+          <div class="right">
+            <svg viewBox="0 0 16 12" fill="currentColor"><path d="M1 11h2V7H1v4zm4 0h2V4H5v7zm4 0h2V1H9v10zm4 0h2V8h-2v3z"/></svg>
+            <span>100</span>
+          </div>
+        </div>
+        <div class="home-head">
+          <div class="home-eye">Thursday — June 26</div>
+          <div class="home-greet">Good evening,<br/><em>Enkh</em>.</div>
+        </div>
+
+        <div class="home-card" onclick="go('journal')">
+          <div class="home-card-shape"></div>
+          <div class="home-card-label">Today</div>
+          <div class="home-card-title">Write to <em>yourself</em></div>
+          <div class="home-card-meta"><span>2 min · Journal</span><span>→</span></div>
+        </div>
+
+        <div class="home-card mirror-c" onclick="go('mirror-intro')">
+          <div class="home-card-shape"></div>
+          <div class="home-card-label">Ready now</div>
+          <div class="home-card-title">Your <em>Mirror Session</em></div>
+          <div class="home-card-meta"><span>The Mirror has 3 notes</span><span>→</span></div>
+        </div>
+
+        <div class="home-list">
+          <div class="home-list-row"><div class="day">Wed</div><div class="snippet">"I noticed I was holding my breath…"</div></div>
+          <div class="home-list-row"><div class="day">Tue</div><div class="snippet">"It happened again at dinner."</div></div>
+          <div class="home-list-row"><div class="day">Mon</div><div class="snippet">"Voice note · 1:42"</div></div>
+        </div>
+
+        <div class="tab-bar">
+          <div class="tab on"><svg viewBox="0 0 24 24"><path d="M3 12L12 4l9 8M5 10v10h14V10"/></svg>Home</div>
+          <div class="tab" onclick="go('journal')"><svg viewBox="0 0 24 24"><path d="M6 3h12a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V5a2 2 0 012-2zM10 8h4M10 12h4M10 16h2"/></svg>Journal</div>
+          <div class="tab" onclick="go('chat')"><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 119 9H4l3-3a9 9 0 01-4-6z"/></svg>Chat</div>
+          <div class="tab" onclick="go('map')"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 010 18M12 3a14 14 0 000 18"/></svg>Map</div>
+        </div>
+      </div>
+
+      <!-- ============ 5. JOURNAL ============ -->
+      <div class="screen-content" data-screen="journal">
+        <div class="status">
+          <span>9:43</span>
+          <div class="right">
+            <svg viewBox="0 0 16 12" fill="currentColor"><path d="M1 11h2V7H1v4zm4 0h2V4H5v7zm4 0h2V1H9v10zm4 0h2V8h-2v3z"/></svg>
+            <span>100</span>
+          </div>
+        </div>
+        <div class="journal-head">
+          <div class="home-eye">Journal · Today</div>
+          <div class="journal-prompt">What's <em>true</em> right now?</div>
+        </div>
+        <div class="journal-body">
+          <div class="journal-text" id="journalText"></div>
+          <div class="journal-tags" id="journalTags"></div>
+        </div>
+        <div class="journal-foot">
+          <button class="cta" onclick="go('chat')">Save & reflect</button>
+          <div class="journal-voice">●</div>
+        </div>
+      </div>
+
+      <!-- ============ 6. CHAT ============ -->
+      <div class="screen-content" data-screen="chat">
+        <div class="status">
+          <span>9:45</span>
+          <div class="right">
+            <svg viewBox="0 0 16 12" fill="currentColor"><path d="M1 11h2V7H1v4zm4 0h2V4H5v7zm4 0h2V1H9v10zm4 0h2V8h-2v3z"/></svg>
+            <span>100</span>
+          </div>
+        </div>
+        <div class="chat-head">
+          <div class="chat-back" onclick="go('home')">←</div>
+          <div class="chat-avatar"></div>
+          <div class="chat-name">The Therapist<small>Conscious layer</small></div>
+        </div>
+        <div class="chat-body" id="chatBody">
+          <div class="bubble them">What's on your mind tonight?</div>
+        </div>
+        <div class="chat-input-wrap">
+          <div class="quick-replies" id="quickReplies">
+            <div class="quick-reply" onclick="sendReply('I keep checking if he\\'s online.')">"I keep checking if he's online."</div>
+            <div class="quick-reply" onclick="sendReply('I feel small.')">"I feel small."</div>
+            <div class="quick-reply" onclick="sendReply('Just tired.')">"Just tired."</div>
+          </div>
+          <div class="chat-input">
+            <span>Reply to The Therapist…</span>
+            <div class="chat-input-mic">●</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ 7. MIRROR INTRO ============ -->
+      <div class="screen-content dark" data-screen="mirror-intro">
+        <div class="status">
+          <span>9:41</span>
+          <div class="right">
+            <svg viewBox="0 0 16 12" fill="currentColor"><path d="M1 11h2V7H1v4zm4 0h2V4H5v7zm4 0h2V1H9v10zm4 0h2V8h-2v3z"/></svg>
+            <span>100</span>
+          </div>
+        </div>
+        <div class="mirror-intro">
+          <div class="orb-mirror"></div>
+          <div class="mirror-eye">Mirror Session · Week 12</div>
+          <div class="mirror-title">I noticed<br/><em>three things</em>.</div>
+          <p class="mirror-sub">Each is something you wrote yourself. I'm only showing it back.</p>
+          <button class="cta cta-light" onclick="go('obs1')">Show me</button>
+        </div>
+      </div>
+
+      <!-- ============ 8a. OBSERVATION 1 ============ -->
+      <div class="screen-content dark" data-screen="obs1">
+        <div class="status">
+          <span>9:42</span>
+          <div class="right">
+            <svg viewBox="0 0 16 12" fill="currentColor"><path d="M1 11h2V7H1v4zm4 0h2V4H5v7zm4 0h2V1H9v10zm4 0h2V8h-2v3z"/></svg>
+            <span>100</span>
+          </div>
+        </div>
+        <div class="obs-head">
+          <div class="mirror-eye">Observation 1 of 3</div>
+          <div class="obs-title">On <em>distance</em>.</div>
+        </div>
+        <div class="obs-progress">
+          <span>1</span>
+          <div class="obs-progress-bar"><div class="obs-progress-fill" style="width: 33%"></div></div>
+          <span>3</span>
+        </div>
+        <div class="obs-card">
+          <div class="obs-quote">"You've written about your mother 14 times this month. You've never called her 'mom.' Always 'my mother.' What might that distance protect?"</div>
+          <div class="obs-evidence">
+            <strong>Evidence —</strong> 14 mentions across journal entries from June 3–25. The shift from "mom" → "my mother" happened on March 14, the week after the call about your father.
+          </div>
+          <div class="obs-actions">
+            <div class="pill" onclick="selectPill(this); setTimeout(() => go('obs2'), 500)">Lands</div>
+            <div class="pill" onclick="selectPill(this); setTimeout(() => go('obs2'), 500)">Not yet</div>
+            <div class="pill" onclick="selectPill(this); setTimeout(() => go('obs2'), 500)">Say more</div>
+          </div>
+        </div>
+        <div style="flex: 1;"></div>
+        <div class="tab-bar">
+          <div class="tab" onclick="go('home')"><svg viewBox="0 0 24 24"><path d="M3 12L12 4l9 8M5 10v10h14V10"/></svg>Home</div>
+          <div class="tab" onclick="go('journal')"><svg viewBox="0 0 24 24"><path d="M6 3h12a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V5a2 2 0 012-2zM10 8h4M10 12h4M10 16h2"/></svg>Journal</div>
+          <div class="tab" onclick="go('chat')"><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 119 9H4l3-3a9 9 0 01-4-6z"/></svg>Chat</div>
+          <div class="tab on"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>Mirror</div>
+        </div>
+      </div>
+
+      <!-- ============ 8b. OBSERVATION 2 ============ -->
+      <div class="screen-content dark" data-screen="obs2">
+        <div class="status">
+          <span>9:44</span>
+          <div class="right">
+            <svg viewBox="0 0 16 12" fill="currentColor"><path d="M1 11h2V7H1v4zm4 0h2V4H5v7zm4 0h2V1H9v10zm4 0h2V8h-2v3z"/></svg>
+            <span>100</span>
+          </div>
+        </div>
+        <div class="obs-head">
+          <div class="mirror-eye">Observation 2 of 3</div>
+          <div class="obs-title">On <em>checking</em>.</div>
+        </div>
+        <div class="obs-progress">
+          <span>2</span>
+          <div class="obs-progress-bar"><div class="obs-progress-fill" style="width: 66%"></div></div>
+          <span>3</span>
+        </div>
+        <div class="obs-card">
+          <div class="obs-quote">"You wrote 'I shouldn't have' seven times this week. Always after reaching out. Never after staying silent. Notice what shape that is."</div>
+          <div class="obs-evidence">
+            <strong>Pattern —</strong> 7 entries containing "I shouldn't have" followed by a self-soothing line within 3 sentences. The shape: reach, retract, repair.
+          </div>
+          <div class="obs-actions">
+            <div class="pill" onclick="selectPill(this); setTimeout(() => go('integ'), 500)">Lands</div>
+            <div class="pill" onclick="selectPill(this); setTimeout(() => go('integ'), 500)">Not yet</div>
+            <div class="pill" onclick="selectPill(this); setTimeout(() => go('integ'), 500)">Say more</div>
+          </div>
+        </div>
+        <div style="flex: 1;"></div>
+        <div class="tab-bar">
+          <div class="tab" onclick="go('home')"><svg viewBox="0 0 24 24"><path d="M3 12L12 4l9 8M5 10v10h14V10"/></svg>Home</div>
+          <div class="tab" onclick="go('journal')"><svg viewBox="0 0 24 24"><path d="M6 3h12a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V5a2 2 0 012-2zM10 8h4M10 12h4M10 16h2"/></svg>Journal</div>
+          <div class="tab" onclick="go('chat')"><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 119 9H4l3-3a9 9 0 01-4-6z"/></svg>Chat</div>
+          <div class="tab on"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>Mirror</div>
+        </div>
+      </div>
+
+      <!-- ============ 9. INTEGRATION ============ -->
+      <div class="screen-content dark" data-screen="integ">
+        <div class="status">
+          <span>9:48</span>
+          <div class="right">
+            <svg viewBox="0 0 16 12" fill="currentColor"><path d="M1 11h2V7H1v4zm4 0h2V4H5v7zm4 0h2V1H9v10zm4 0h2V8h-2v3z"/></svg>
+            <span>100</span>
+          </div>
+        </div>
+        <div class="integ-head">
+          <div class="mirror-eye">Session complete</div>
+          <div class="obs-title">Sit <em>with this</em>.</div>
+          <p class="mirror-sub" style="margin-top: 8px; margin-bottom: 0;">There's nothing to do tonight.</p>
+        </div>
+        <div class="integ-card">
+          <div class="integ-card-label">Optional · Tomorrow</div>
+          <div class="integ-card-quote">"Write your mother a letter you'll never send. Use her name."</div>
+          <div class="integ-card-footer">Prompt designed by your Therapist, in response.</div>
+        </div>
+        <div class="chart-wrap">
+          <div class="chart-label">Your patterns · 6 weeks</div>
+          <div class="chart-bars" id="chartBars"></div>
+          <div class="chart-axis"><span>W7</span><span>W8</span><span>W9</span><span>W10</span><span>W11</span><span>W12</span></div>
+        </div>
+        <div style="flex: 1;"></div>
+        <div style="padding: 12px 24px 14px;">
+          <button class="cta cta-light" style="width: 100%;" onclick="go('map')">See your Map →</button>
+        </div>
+        <div class="tab-bar">
+          <div class="tab" onclick="go('home')"><svg viewBox="0 0 24 24"><path d="M3 12L12 4l9 8M5 10v10h14V10"/></svg>Home</div>
+          <div class="tab" onclick="go('journal')"><svg viewBox="0 0 24 24"><path d="M6 3h12a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V5a2 2 0 012-2zM10 8h4M10 12h4M10 16h2"/></svg>Journal</div>
+          <div class="tab" onclick="go('chat')"><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 119 9H4l3-3a9 9 0 01-4-6z"/></svg>Chat</div>
+          <div class="tab on"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>Mirror</div>
+        </div>
+      </div>
+
+      <!-- ============ 10. MAP ============ -->
+      <div class="screen-content map-content" data-screen="map">
+        <div class="status">
+          <span>9:50</span>
+          <div class="right">
+            <svg viewBox="0 0 16 12" fill="currentColor"><path d="M1 11h2V7H1v4zm4 0h2V4H5v7zm4 0h2V1H9v10zm4 0h2V8h-2v3z"/></svg>
+            <span>100</span>
+          </div>
+        </div>
+        <div class="map-head">
+          <div class="map-eye">June · Month 3</div>
+          <div class="map-title">Your <em>attachment</em> landscape.</div>
+        </div>
+        <div class="map-canvas" id="mapCanvas"></div>
+        <div class="map-legend">
+          <div class="map-legend-row"><span class="legend-dot" style="background: var(--terra);"></span>Anxious · 12 entries</div>
+          <div class="map-legend-row"><span class="legend-dot" style="background: var(--lavender);"></span>Avoidant · 7 entries</div>
+          <div class="map-legend-row"><span class="legend-dot" style="background: var(--ink);"></span>Secure · 19 <span class="green-up">↑ from May</span></div>
+        </div>
+        <div class="map-foot">
+          <div class="map-btn outline">Compare</div>
+          <div class="map-btn solid">Share</div>
+        </div>
+        <div class="tab-bar">
+          <div class="tab" onclick="go('home')"><svg viewBox="0 0 24 24"><path d="M3 12L12 4l9 8M5 10v10h14V10"/></svg>Home</div>
+          <div class="tab" onclick="go('journal')"><svg viewBox="0 0 24 24"><path d="M6 3h12a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V5a2 2 0 012-2zM10 8h4M10 12h4M10 16h2"/></svg>Journal</div>
+          <div class="tab" onclick="go('chat')"><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 119 9H4l3-3a9 9 0 01-4-6z"/></svg>Chat</div>
+          <div class="tab on"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>Map</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="demo-ctrl">
+    <button class="ctrl-btn" id="prevBtn" onclick="prevScreen()">←</button>
+    <span class="ctrl-step" id="stepLabel">01 · Welcome</span>
+    <button class="ctrl-btn" id="nextBtn" onclick="nextScreen()">→</button>
+    <div class="ctrl-divider"></div>
+    <span class="ctrl-restart" onclick="restart()">↻ Restart</span>
+  </div>
+  <div class="demo-hint">Tap the phone or use the arrows</div>
+</div>
+
+<script>
+  // ============ SCREEN FLOW ============
+  const flow = ['welcome', 'onboard', 'reveal', 'home', 'journal', 'chat', 'mirror-intro', 'obs1', 'obs2', 'integ', 'map'];
+  const labels = {
+    welcome: '01 · Welcome',
+    onboard: '02 · Onboarding',
+    reveal: '03 · The Reveal',
+    home: '04 · Home',
+    journal: '05 · Journal',
+    chat: '06 · The Therapist',
+    'mirror-intro': '07 · Mirror · Intro',
+    obs1: '08 · Mirror · Observation',
+    obs2: '09 · Mirror · Observation',
+    integ: '10 · Integration',
+    map: '11 · The Map'
+  };
+  let current = 'welcome';
+
+  function go(name) {
+    if (!flow.includes(name)) return;
+    const all = document.querySelectorAll('.screen-content');
+    all.forEach(s => s.classList.remove('active'));
+    const next = document.querySelector(`[data-screen="${name}"]`);
+    next.classList.add('active');
+    current = name;
+    updateCtrl();
+    onEnter(name);
+  }
+
+  function nextScreen() {
+    const i = flow.indexOf(current);
+    if (i < flow.length - 1) go(flow[i + 1]);
+  }
+  function prevScreen() {
+    const i = flow.indexOf(current);
+    if (i > 0) go(flow[i - 1]);
+  }
+  function restart() { go('welcome'); }
+
+  function updateCtrl() {
+    const i = flow.indexOf(current);
+    document.getElementById('stepLabel').textContent = labels[current];
+    document.getElementById('prevBtn').disabled = i === 0;
+    document.getElementById('nextBtn').disabled = i === flow.length - 1;
+  }
+
+  // ============ SCREEN-SPECIFIC ANIMATIONS ============
+  function onEnter(name) {
+    if (name === 'onboard') typeOb();
+    if (name === 'journal') typeJournal();
+    if (name === 'chat') resetChat();
+    if (name === 'integ') drawChart();
+    if (name === 'map') drawMap();
+  }
+
+  // Onboarding typewriter
+  function typeOb() {
+    const el = document.getElementById('obText');
+    const text = "It was last March. I was driving home and I almost called my brother — I had my thumb on his name — but I imagined his voice already, tired, and I just put the phone down.";
+    el.textContent = '';
+    let i = 0;
+    const interval = setInterval(() => {
+      if (i >= text.length || current !== 'onboard') { clearInterval(interval); return; }
+      el.textContent += text[i];
+      i++;
+    }, 28);
+  }
+
+  // Journal typewriter
+  function typeJournal() {
+    const el = document.getElementById('journalText');
+    const tags = document.getElementById('journalTags');
+    const text = "I had that thing again where I checked his last-seen four times before he replied. It's stupid. It's not stupid. I don't know what to do with it.";
+    el.textContent = '';
+    tags.innerHTML = '';
+    let i = 0;
+    const interval = setInterval(() => {
+      if (i >= text.length || current !== 'journal') {
+        clearInterval(interval);
+        if (current === 'journal') {
+          setTimeout(() => {
+            tags.innerHTML = `
+              <div class="journal-tag primary" style="animation-delay: 0s;">#anxious-spiral</div>
+              <div class="journal-tag secondary" style="animation-delay: 0.15s;">#partner</div>
+              <div class="journal-tag secondary" style="animation-delay: 0.3s;">— auto-tagged</div>
+            `;
+          }, 200);
+        }
+        return;
+      }
+      el.textContent += text[i];
+      i++;
+    }, 22);
+  }
+
+  // Chat
+  function resetChat() {
+    const body = document.getElementById('chatBody');
+    body.innerHTML = '<div class="bubble them">What\'s on your mind tonight?</div>';
+    document.getElementById('quickReplies').style.display = 'flex';
+  }
+
+  function sendReply(text) {
+    const body = document.getElementById('chatBody');
+    const me = document.createElement('div');
+    me.className = 'bubble me';
+    me.textContent = text;
+    body.appendChild(me);
+    body.scrollTop = body.scrollHeight;
+
+    document.getElementById('quickReplies').style.display = 'none';
+
+    // Typing indicator
+    setTimeout(() => {
+      if (current !== 'chat') return;
+      const typing = document.createElement('div');
+      typing.className = 'typing';
+      typing.innerHTML = '<span></span><span></span><span></span>';
+      body.appendChild(typing);
+      body.scrollTop = body.scrollHeight;
+
+      setTimeout(() => {
+        if (current !== 'chat') return;
+        typing.remove();
+        const them = document.createElement('div');
+        them.className = 'bubble them';
+        them.innerHTML = 'The hating is interesting. <em>What feels worse — that he\'s not replying, or that you\'re the one watching?</em>';
+        body.appendChild(them);
+        body.scrollTop = body.scrollHeight;
+
+        // Show mirror prompt after a beat
+        setTimeout(() => {
+          if (current !== 'chat') return;
+          const hint = document.createElement('div');
+          hint.style.cssText = 'text-align:center; padding: 12px; font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); cursor: pointer;';
+          hint.innerHTML = '↓ The Mirror is ready ·  tap to continue';
+          hint.onclick = () => go('mirror-intro');
+          body.appendChild(hint);
+          body.scrollTop = body.scrollHeight;
+        }, 1500);
+      }, 1800);
+    }, 600);
+  }
+
+  // Pills
+  function selectPill(el) {
+    el.parentElement.querySelectorAll('.pill').forEach(p => p.classList.remove('selected'));
+    el.classList.add('selected');
+  }
+
+  // Chart
+  function drawChart() {
+    const wrap = document.getElementById('chartBars');
+    const heights = [30, 45, 65, 80, 90, 100];
+    const colors = [
+      'linear-gradient(180deg, var(--lavender-soft), transparent)',
+      'linear-gradient(180deg, var(--lavender-soft), transparent)',
+      'linear-gradient(180deg, var(--lavender-soft), transparent)',
+      'linear-gradient(180deg, var(--terra-soft), transparent)',
+      'linear-gradient(180deg, var(--terra-soft), transparent)',
+      'linear-gradient(180deg, var(--terra-soft), var(--terra))'
+    ];
+    wrap.innerHTML = '';
+    heights.forEach((h, i) => {
+      const bar = document.createElement('div');
+      bar.className = 'chart-bar';
+      bar.style.background = colors[i];
+      bar.style.height = h + '%';
+      bar.style.animationDelay = (i * 0.1) + 's';
+      wrap.appendChild(bar);
+    });
+  }
+
+  // Map dots
+  function drawMap() {
+    const canvas = document.getElementById('mapCanvas');
+    canvas.innerHTML = '';
+    const dots = [
+      { x: 22, y: 28, color: '#1A1814', delay: 0.2 },
+      { x: 38, y: 45, color: '#D97757', delay: 0.4 },
+      { x: 68, y: 52, color: '#1A1814', delay: 0.6 },
+      { x: 80, y: 30, color: '#9B8BB4', delay: 0.8 },
+      { x: 48, y: 78, color: '#FAF6EF', delay: 1.0 },
+      { x: 25, y: 65, color: '#D97757', delay: 1.2 },
+      { x: 55, y: 25, color: '#9B8BB4', delay: 1.4 },
+      { x: 75, y: 75, color: '#1A1814', delay: 1.6 },
+    ];
+    dots.forEach(d => {
+      const el = document.createElement('div');
+      el.className = 'map-dot';
+      el.style.left = d.x + '%';
+      el.style.top = d.y + '%';
+      el.style.color = d.color;
+      el.style.background = d.color;
+      el.style.animationDelay = d.delay + 's';
+      canvas.appendChild(el);
+    });
+  }
+
+  // Keyboard nav
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight') nextScreen();
+    if (e.key === 'ArrowLeft') prevScreen();
+    if (e.key === 'r' || e.key === 'R') restart();
+  });
+
+  updateCtrl();
+</script>
+
+</body>
+</html>
