@@ -340,6 +340,7 @@ body::before {
 .ob-body {
   padding: 58px 28px 22px;
   flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   overflow-y: auto;
@@ -546,6 +547,7 @@ body::before {
 .result-body { 
   padding: 80px 36px 40px; 
   flex: 1; 
+  min-height: 0;
   display: flex; 
   flex-direction: column; 
   overflow-y: auto;
@@ -621,6 +623,7 @@ body::before {
 .home-scroll-container {
   flex: 1;
   overflow-y: auto;
+  min-height: 0;
   display: flex;
   flex-direction: column;
 }
@@ -832,6 +835,7 @@ body::before {
 }
 .chat-body {
   flex: 1; 
+  min-height: 0;
   padding: 20px 22px;
   display: flex; 
   flex-direction: column; 
@@ -969,6 +973,7 @@ body::before {
 .mirror-intro {
   padding: 80px 36px 40px;
   flex: 1; 
+  min-height: 0;
   display: flex; 
   flex-direction: column;
   align-items: center; 
@@ -1027,6 +1032,7 @@ body::before {
 .obs-scroll-container, .integ-scroll-container {
   flex: 1;
   overflow-y: auto;
+  min-height: 0;
   display: flex;
   flex-direction: column;
 }
@@ -1315,6 +1321,7 @@ body::before {
 }
 .journal-body {
   flex: 1; 
+  min-height: 0;
   padding: 16px 28px;
   display: flex; 
   flex-direction: column;
@@ -1746,6 +1753,7 @@ body::before {
 .reflection-body-scroll {
   flex: 1;
   overflow-y: auto;
+  min-height: 0;
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
 }
@@ -2150,4 +2158,29 @@ body::before {
   font-weight: 600;
   min-width: 100px;
   cursor: pointer;
+}
+
+/* Hide scrollbars globally on scrollable container sections */
+.ob-body,
+.result-body,
+.home-scroll-container,
+.chat-body,
+.mirror-intro,
+.obs-scroll-container,
+.integ-scroll-container,
+.journal-body,
+.journal-text {
+  scrollbar-width: none; /* Firefox */
+}
+
+.ob-body::-webkit-scrollbar,
+.result-body::-webkit-scrollbar,
+.home-scroll-container::-webkit-scrollbar,
+.chat-body::-webkit-scrollbar,
+.mirror-intro::-webkit-scrollbar,
+.obs-scroll-container::-webkit-scrollbar,
+.integ-scroll-container::-webkit-scrollbar,
+.journal-body::-webkit-scrollbar,
+.journal-text::-webkit-scrollbar {
+  display: none; /* Safari and Chrome */
 }
