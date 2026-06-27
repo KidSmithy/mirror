@@ -1,6 +1,10 @@
 import uuid
+import io
+import logging
 from datetime import datetime, date
 from typing import List, Optional
+
+logger = logging.getLogger("mirror-app")
 from fastapi import FastAPI, Header, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -215,17 +219,76 @@ def interact_with_mirror(data: dict, user_id: str = Header(None, alias="x-user-i
             "attachment_style": new_style
         }).eq("id", uid).execute()
         
-        # 4. Create a new timeline entry in reflections table
-        # Find the image of the previous reflection or use default
-        last_ref = supabase_client.table("reflections").select("image_url").eq("user_id", uid).order("created_at", desc=True).limit(1).execute()
+        # 4. Generate a new Ghibli portrait using Gemini Imagen
         image_url = "https://uqsflvuuhbxkgmrydvdd.supabase.co/storage/v1/object/public/reflections/enkh_june27.png"
+        last_ref = supabase_client.table("reflections").select("image_url").eq("user_id", uid).order("created_at", desc=True).limit(1).execute()
         if last_ref.data and last_ref.data[0].get("image_url"):
             image_url = last_ref.data[0]["image_url"]
-            
+
         new_ref_id = str(uuid.uuid4())
+        created_at_str = datetime.utcnow().isoformat() + "Z"
+
+        if use_real_gemini:
+            try:
+                image_prompt = (
+                    f"A beautiful Studio Ghibli style hand-drawn anime portrait. "
+                    f"Expressing the psychological state: {new_style}. "
+                    f"Soft lighting, emotional depth, clean anime line art, masterwork."
+                )
+                result = client.models.generate_content(
+                    model='gemini-2.5-flash-image',
+                    contents=image_prompt
+                )
+                
+                image_bytes = None
+                for candidate in result.candidates:
+                    for part in candidate.content.parts:
+                        if part.inline_data and part.inline_data.mime_type.startswith("image/"):
+                            image_bytes = part.inline_data.data
+                            break
+                    if image_bytes:
+                        break
+                
+                if image_bytes:
+                    image_filename = f"{uid}_{new_ref_id}.png"
+                    
+                    import tempfile
+                    import os
+                    
+                    with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
+                        tmp.write(image_bytes)
+                        tmp_path = tmp.name
+                        
+                    try:
+                        # Upload to Supabase storage using the temporary file path
+                        supabase_client.storage.from_('reflections').upload(
+                            file=tmp_path,
+                            path=image_filename,
+                            file_options={"content-type": "image/png", "x-upsert": "true"}
+                        )
+                    finally:
+                        try:
+                            os.unlink(tmp_path)
+                        except:
+                            pass
+                    
+                    # Get public URL
+                    public_url_res = supabase_client.storage.from_('reflections').get_public_url(image_filename)
+                    if hasattr(public_url_res, 'url'):
+                        image_url = public_url_res.url
+                    elif isinstance(public_url_res, dict) and 'url' in public_url_res:
+                        image_url = public_url_res['url']
+                    else:
+                        image_url = str(public_url_res)
+            except Exception as img_err:
+                import traceback
+                traceback.print_exc()
+                logger.error(f"Failed to generate or upload mirror Ghibli portrait: {img_err}")
+
         supabase_client.table("reflections").insert({
             "id": new_ref_id,
             "user_id": uid,
+            "created_at": created_at_str,
             "overall_reflection": new_overall,
             "attachment_style": new_style,
             "insight": update.get("insight", "Direct conversation with Mirror"),
@@ -239,6 +302,8 @@ def interact_with_mirror(data: dict, user_id: str = Header(None, alias="x-user-i
             "attachment_style": new_style
         }
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         logger.error(f"Error during mirror interaction: {e}")
         raise HTTPException(status_code=500, detail=f"Mirror interaction failed: {e}")
 

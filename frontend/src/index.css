@@ -1361,42 +1361,86 @@ body::before {
   .phone { transform: scale(0.72); }
 }
 
-/* ============ 9. OVERALL REFLECTION OVERLAY ============ */
 .reflection-overlay {
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(14, 13, 26, 0.85);
-  backdrop-filter: blur(20px);
+  background: linear-gradient(160deg, #181528 0%, #0a0910 100%);
   z-index: 100;
   display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  padding: 16px;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 44px;
 }
-.reflection-overlay::-webkit-scrollbar {
+
+.reflection-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 60px 24px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(14, 13, 26, 0.85);
+  backdrop-filter: blur(20px);
+  flex-shrink: 0;
+}
+
+.reflection-back-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: var(--lavender-soft);
+  font-size: 22px;
+  font-weight: 300;
+  cursor: pointer;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+  padding: 0;
+}
+
+.reflection-back-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--cream);
+}
+
+.reflection-header-title {
+  font-family: 'Instrument Serif', serif;
+  font-size: 20px;
+  color: var(--cream);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+.reflection-body-scroll {
+  flex: 1;
+  overflow-y: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.reflection-body-scroll::-webkit-scrollbar {
   display: none;
 }
 
 .reflection-modal {
   width: 100%;
-  max-width: 320px;
-  background: linear-gradient(160deg, rgba(155, 139, 180, 0.22), rgba(14, 13, 26, 0.95));
-  border: 1px solid rgba(155, 139, 180, 0.35);
-  border-radius: 28px;
-  padding: 28px 22px;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 24px 24px 32px;
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+  box-shadow: none;
   animation: modalSlideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  margin: auto 0;
+  margin: 0;
   flex-shrink: 0;
 }
 
