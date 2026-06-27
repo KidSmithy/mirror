@@ -219,71 +219,31 @@ def interact_with_mirror(data: dict, user_id: str = Header(None, alias="x-user-i
             "attachment_style": new_style
         }).eq("id", uid).execute()
         
-        # 4. Generate a new Ghibli portrait using Gemini Imagen
-        image_url = "https://uqsflvuuhbxkgmrydvdd.supabase.co/storage/v1/object/public/reflections/enkh_june27.png"
-        last_ref = supabase_client.table("reflections").select("image_url").eq("user_id", uid).order("created_at", desc=True).limit(1).execute()
-        if last_ref.data and last_ref.data[0].get("image_url"):
-            image_url = last_ref.data[0]["image_url"]
+        # 4. Use 10 pre-generated Ghibli images from Supabase storage
+        STATIC_REFLECTIONS_IMAGES = [
+            "https://uqsflvuuhbxkgmrydvdd.supabase.co/storage/v1/object/public/reflections/static_ghibli_calm.png",
+            "https://uqsflvuuhbxkgmrydvdd.supabase.co/storage/v1/object/public/reflections/static_ghibli_resilient.png",
+            "https://uqsflvuuhbxkgmrydvdd.supabase.co/storage/v1/object/public/reflections/static_ghibli_reflective.png",
+            "https://uqsflvuuhbxkgmrydvdd.supabase.co/storage/v1/object/public/reflections/static_ghibli_hopeful.png",
+            "https://uqsflvuuhbxkgmrydvdd.supabase.co/storage/v1/object/public/reflections/static_ghibli_peaceful.png",
+            "https://uqsflvuuhbxkgmrydvdd.supabase.co/storage/v1/object/public/reflections/static_ghibli_courageous.png",
+            "https://uqsflvuuhbxkgmrydvdd.supabase.co/storage/v1/object/public/reflections/static_ghibli_gentle.png",
+            "https://uqsflvuuhbxkgmrydvdd.supabase.co/storage/v1/object/public/reflections/static_ghibli_secure.png",
+            "https://uqsflvuuhbxkgmrydvdd.supabase.co/storage/v1/object/public/reflections/static_ghibli_mindful.png",
+            "https://uqsflvuuhbxkgmrydvdd.supabase.co/storage/v1/object/public/reflections/static_ghibli_joyful.png"
+        ]
+        
+        # Get count of current reflections in database to pick sequential index
+        try:
+            count_res = supabase_client.table("reflections").select("id", count="exact").eq("user_id", uid).execute()
+            current_count = count_res.count or len(count_res.data or [])
+        except Exception:
+            current_count = 0
+            
+        image_url = STATIC_REFLECTIONS_IMAGES[current_count % len(STATIC_REFLECTIONS_IMAGES)]
 
         new_ref_id = str(uuid.uuid4())
         created_at_str = datetime.utcnow().isoformat() + "Z"
-
-        if use_real_gemini:
-            try:
-                image_prompt = (
-                    f"A beautiful Studio Ghibli style hand-drawn anime portrait. "
-                    f"Expressing the psychological state: {new_style}. "
-                    f"Soft lighting, emotional depth, clean anime line art, masterwork."
-                )
-                result = client.models.generate_content(
-                    model='gemini-2.5-flash-image',
-                    contents=image_prompt
-                )
-                
-                image_bytes = None
-                for candidate in result.candidates:
-                    for part in candidate.content.parts:
-                        if part.inline_data and part.inline_data.mime_type.startswith("image/"):
-                            image_bytes = part.inline_data.data
-                            break
-                    if image_bytes:
-                        break
-                
-                if image_bytes:
-                    image_filename = f"{uid}_{new_ref_id}.png"
-                    
-                    import tempfile
-                    import os
-                    
-                    with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
-                        tmp.write(image_bytes)
-                        tmp_path = tmp.name
-                        
-                    try:
-                        # Upload to Supabase storage using the temporary file path
-                        supabase_client.storage.from_('reflections').upload(
-                            file=tmp_path,
-                            path=image_filename,
-                            file_options={"content-type": "image/png", "x-upsert": "true"}
-                        )
-                    finally:
-                        try:
-                            os.unlink(tmp_path)
-                        except:
-                            pass
-                    
-                    # Get public URL
-                    public_url_res = supabase_client.storage.from_('reflections').get_public_url(image_filename)
-                    if hasattr(public_url_res, 'url'):
-                        image_url = public_url_res.url
-                    elif isinstance(public_url_res, dict) and 'url' in public_url_res:
-                        image_url = public_url_res['url']
-                    else:
-                        image_url = str(public_url_res)
-            except Exception as img_err:
-                import traceback
-                traceback.print_exc()
-                logger.error(f"Failed to generate or upload mirror Ghibli portrait: {img_err}")
 
         supabase_client.table("reflections").insert({
             "id": new_ref_id,
