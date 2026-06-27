@@ -41,6 +41,7 @@ export default function App() {
   
   // Interactive UI states
   const [loading, setLoading] = useState(false);
+  const [saveStatus, setSaveStatus] = useState(null); // null | 'saving' | 'success' | 'error'
   const [onboardInput, setOnboardInput] = useState('');
   const [onboardStep, setOnboardStep] = useState(0);
   const [onboardAnswers, setOnboardAnswers] = useState([]);
@@ -129,6 +130,7 @@ export default function App() {
 
   const saveJournal = async () => {
     if (!journalInput.trim() && !isRecording) return;
+    setSaveStatus('saving');
     setLoading(true);
     const headers = { 'x-user-id': currentUser.id };
     try {
@@ -144,8 +146,12 @@ export default function App() {
       // Update attachment counts locally
       const mapRes = await axios.get(`${API_BASE}/attachment-map`, { headers });
       setAttachmentMap(mapRes.data);
+      setSaveStatus('success');
+      setTimeout(() => setSaveStatus(null), 2500);
     } catch (err) {
       console.error("Error saving journal:", err);
+      setSaveStatus('error');
+      setTimeout(() => setSaveStatus(null), 3000);
     } finally {
       setLoading(false);
     }
@@ -529,6 +535,19 @@ export default function App() {
                   <div className="journal-prompt">What's <em>true</em> right now?</div>
                 </div>
                 <div className="journal-body">
+                  {saveStatus && (
+                    <div className={`journal-status-banner ${saveStatus}`}>
+                      {saveStatus === 'saving' && (
+                        <div className="saving-spinner-wrap">
+                          <span className="spinner-dot"></span>
+                          <span>Reflecting on your thoughts...</span>
+                        </div>
+                      )}
+                      {saveStatus === 'success' && <span>✓ Journal entry saved and reflected</span>}
+                      {saveStatus === 'error' && <span>✗ Failed to save. Please try again.</span>}
+                    </div>
+                  )}
+
                   {isRecording ? (
                     <div className="ob-field animate-fade-in" style={{ minHeight: 'auto', flex: 1, justifyContent: 'center', alignItems: 'center' }}>
                       <div className="ob-mic">
@@ -542,6 +561,7 @@ export default function App() {
                       value={journalInput}
                       onChange={(e) => setJournalInput(e.target.value)}
                       placeholder="Write without filtering. Let thoughts wander..."
+                      disabled={saveStatus === 'saving'}
                     />
                   )}
                   
@@ -561,16 +581,22 @@ export default function App() {
                   <button 
                     className="cta" 
                     onClick={saveJournal}
-                    disabled={!journalInput.trim() && !isRecording}
+                    disabled={(!journalInput.trim() && !isRecording) || saveStatus === 'saving'}
                   >
-                    Save & reflect
+                    {saveStatus === 'saving' && 'Reflecting...'}
+                    {saveStatus === 'success' && 'Saved'}
+                    {saveStatus === 'error' && 'Failed'}
+                    {!saveStatus && 'Save & reflect'}
                   </button>
                   <button 
                     className="journal-voice" 
                     onClick={toggleRecording}
+                    disabled={saveStatus === 'saving'}
                     style={{
                       backgroundColor: isRecording ? 'var(--ink)' : 'var(--terra)',
-                      transform: isRecording ? 'scale(0.95)' : 'none'
+                      transform: isRecording ? 'scale(0.95)' : 'none',
+                      opacity: saveStatus === 'saving' ? 0.3 : 1,
+                      cursor: saveStatus === 'saving' ? 'not-allowed' : 'pointer'
                     }}
                   >
                     {isRecording ? '■' : '●'}
