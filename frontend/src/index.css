@@ -1297,20 +1297,22 @@ body::before {
 
 /* ============ DEVELOPER switcher ============ */
 .dev-switcher {
-  width: 100%;
-  max-width: 390px;
-  margin-bottom: 16px;
+  position: absolute;
+  left: -240px;
+  top: 120px;
+  width: 200px;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
   backdrop-filter: blur(20px);
   border-radius: 20px;
-  padding: 12px 18px;
+  padding: 16px;
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex-direction: column;
+  gap: 12px;
   box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
   z-index: 50;
   color: #E8E3D8;
+  text-align: left;
 }
 
 .dev-switcher select {
@@ -1324,9 +1326,27 @@ body::before {
   outline: none;
   cursor: pointer;
   transition: border-color 0.2s;
+  width: 100%;
 }
 .dev-switcher select:focus {
   border-color: var(--terra-soft);
+}
+
+@media (max-width: 900px) {
+  .dev-switcher {
+    position: relative;
+    left: auto;
+    top: auto;
+    width: 100%;
+    max-width: 390px;
+    margin-bottom: 16px;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .dev-switcher select {
+    width: auto;
+  }
 }
 
 /* Scroll down fix for small screens */

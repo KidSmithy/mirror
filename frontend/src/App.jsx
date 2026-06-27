@@ -274,25 +274,25 @@ export default function App() {
 
   return (
     <>
-      {/* Sleek developer account switcher */}
-      <div className="dev-switcher">
-        <div className="flex flex-col">
-          <span className="text-[9px] uppercase tracking-wider text-white/50 font-bold">
-            Developer Selector
-          </span>
-          <span className="text-xs text-[#E8B89A] font-semibold">{currentUser.pattern}</span>
-        </div>
-        <select 
-          value={currentUser.id} 
-          onChange={handleUserChange}
-        >
-          {TEST_USERS.map(u => (
-            <option key={u.id} value={u.id}>{u.name} ({u.pattern})</option>
-          ))}
-        </select>
-      </div>
-
       <div className="stage">
+        {/* Sleek developer account switcher */}
+        <div className="dev-switcher">
+          <div className="flex flex-col">
+            <span className="text-[9px] uppercase tracking-wider text-white/50 font-bold">
+              Developer Selector
+            </span>
+            <span className="text-xs text-[#E8B89A] font-semibold">{currentUser.pattern}</span>
+          </div>
+          <select 
+            value={currentUser.id} 
+            onChange={handleUserChange}
+          >
+            {TEST_USERS.map(u => (
+              <option key={u.id} value={u.id}>{u.name} ({u.pattern})</option>
+            ))}
+          </select>
+        </div>
+
         {/* Brand bar above the phone */}
         <div className="brand-bar">
           <span className="brand-dot"></span>
