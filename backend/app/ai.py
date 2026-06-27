@@ -271,8 +271,10 @@ def assess_attachment_style(answers: list) -> dict:
 
         ranked = sorted(scores.items(), key=lambda x: x[1], reverse=True)
         primary = ranked[0][0] if ranked[0][1] > 0 else "Anxious"
-        # Anxious + Avoidant both strongly present => disorganized (push-pull)
-        if scores["Anxious"] > 0 and scores["Avoidant"] > 0 and abs(scores["Anxious"] - scores["Avoidant"]) <= 1:
+        # Anxious + Avoidant both strongly present AND dominant => disorganized (push-pull)
+        if (scores["Anxious"] > 0 and scores["Avoidant"] > 0
+                and abs(scores["Anxious"] - scores["Avoidant"]) <= 1
+                and min(scores["Anxious"], scores["Avoidant"]) >= scores["Secure"]):
             primary = "Disorganized"
         secondary = ranked[1][0] if ranked[1][1] > 0 and ranked[1][0] != primary else None
 

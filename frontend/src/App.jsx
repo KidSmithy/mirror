@@ -21,11 +21,58 @@ const TEST_USERS = [
 
 // Scenario-based onboarding questions. Answers are sent to the assessor agent.
 const ONBOARD_QUESTIONS = [
-  "Your partner takes six hours to reply to a casual text. What's the first thing you feel?",
-  "Tell me about a time you almost reached out — but didn't.",
-  "When a relationship gets really close, what do you notice happening in you?",
-  "After a fight with someone you love, what do you usually do?",
-  "What's the story you catch yourself telling about why closeness is hard?"
+  {
+    q: "Your partner takes hours to reply to a casual text. What happens first in you?",
+    options: [
+      { label: "I start checking my phone and worry I said something wrong.", style: "Anxious" },
+      { label: "I shrug and give it space — I've got my own things going on.", style: "Avoidant" },
+      { label: "I assume they got caught up; we can talk later, it's okay.", style: "Secure" },
+      { label: "I feel anxious, then tell myself I don't need anyone and pull away.", style: "Disorganized" },
+    ],
+  },
+  {
+    q: "When a relationship starts getting really close, you notice…",
+    options: [
+      { label: "I want constant reassurance and worry it could slip away.", style: "Anxious" },
+      { label: "an urge to keep some distance and protect my space.", style: "Avoidant" },
+      { label: "I feel comfortable and trust where it's going.", style: "Secure" },
+      { label: "I crave being close but also feel the pull to withdraw.", style: "Disorganized" },
+    ],
+  },
+  {
+    q: "After a fight with someone you love, you usually…",
+    options: [
+      { label: "replay it and overthink every word, waiting for them to reach out.", style: "Anxious" },
+      { label: "go quiet and shut down until I've cooled off alone.", style: "Avoidant" },
+      { label: "want to talk it through honestly once we're both calm.", style: "Secure" },
+      { label: "reach out, then pull away the moment it feels too close.", style: "Disorganized" },
+    ],
+  },
+  {
+    q: "There was a time you almost reached out — but didn't. Why?",
+    options: [
+      { label: "I worried I'd seem too needy or be a bother.", style: "Anxious" },
+      { label: "I was tired and figured I'd just handle it myself.", style: "Avoidant" },
+      { label: "Honestly I did reach out — I'd rather just communicate.", style: "Secure" },
+      { label: "I almost called, then put the phone down at the last second.", style: "Disorganized" },
+    ],
+  },
+  {
+    q: "The story you catch yourself telling about why closeness is hard:",
+    options: [
+      { label: "I overthink that people will drift away if I'm not careful.", style: "Anxious" },
+      { label: "I'm better off alone; depending on people feels unsafe, so I keep my independence.", style: "Avoidant" },
+      { label: "Closeness isn't always easy, but I trust it's worth it.", style: "Secure" },
+      { label: "I want to be close and need space at the very same time.", style: "Disorganized" },
+    ],
+  },
+];
+
+const QUICK_REPLIES = [
+  "I'm not sure, honestly.",
+  "Tell me more.",
+  "That's hard to sit with.",
+  "I keep avoiding it.",
 ];
 
 export default function App() {
@@ -42,9 +89,12 @@ export default function App() {
   // Interactive UI states
   const [loading, setLoading] = useState(false);
   const [saveStatus, setSaveStatus] = useState(null); // null | 'saving' | 'success' | 'error'
-  const [onboardInput, setOnboardInput] = useState('');
+  const [onboardChoice, setOnboardChoice] = useState(null);
+  const [onboardCustom, setOnboardCustom] = useState('');
+  const [onboardListening, setOnboardListening] = useState(false);
   const [onboardStep, setOnboardStep] = useState(0);
   const [onboardAnswers, setOnboardAnswers] = useState([]);
+  const recognitionRef = useRef(null);
   const [assessment, setAssessment] = useState(null);
   const [assessing, setAssessing] = useState(false);
   const [journalInput, setJournalInput] = useState('');
@@ -191,21 +241,68 @@ export default function App() {
   };
 
   // --- ONBOARDING LOGIC ---
+  const stopDictation = () => {
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
+      recognitionRef.current = null;
+    }
+    setOnboardListening(false);
+  };
+
+  const toggleDictation = () => {
+    if (onboardListening) {
+      stopDictation();
+      return;
+    }
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert("Voice input isn't supported in this browser — try typing instead.");
+      return;
+    }
+    const rec = new SpeechRecognition();
+    rec.lang = 'en-US';
+    rec.interimResults = true;
+    rec.continuous = true;
+    let finalText = onboardCustom ? onboardCustom + ' ' : '';
+    rec.onresult = (e) => {
+      let interim = '';
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const t = e.results[i][0].transcript;
+        if (e.results[i].isFinal) finalText += t;
+        else interim += t;
+      }
+      setOnboardChoice(null);
+      setOnboardCustom((finalText + interim).trimStart());
+    };
+    rec.onerror = () => stopDictation();
+    rec.onend = () => setOnboardListening(false);
+    recognitionRef.current = rec;
+    rec.start();
+    setOnboardListening(true);
+  };
+
   const startOnboarding = () => {
     setOnboardStep(0);
     setOnboardAnswers([]);
-    setOnboardInput('');
+    setOnboardChoice(null);
+    setOnboardCustom('');
+    stopDictation();
     setAssessment(null);
     setScreen('onboard');
   };
 
   const handleOnboardContinue = async () => {
-    const updatedAnswers = [...onboardAnswers, onboardInput.trim()];
+    const custom = onboardCustom.trim();
+    if (onboardChoice === null && !custom) return;
+    stopDictation();
+    const chosen = custom || ONBOARD_QUESTIONS[onboardStep].options[onboardChoice].label;
+    const updatedAnswers = [...onboardAnswers, chosen];
     setOnboardAnswers(updatedAnswers);
 
     if (onboardStep + 1 < ONBOARD_QUESTIONS.length) {
       setOnboardStep(onboardStep + 1);
-      setOnboardInput('');
+      setOnboardChoice(null);
+      setOnboardCustom('');
       return;
     }
 
@@ -394,22 +491,44 @@ export default function App() {
                       <span key={i} className={i <= onboardStep ? 'on' : ''}></span>
                     ))}
                   </div>
-                  <div className="ob-question">{ONBOARD_QUESTIONS[onboardStep]}</div>
-                  <div className="ob-field">
-                    <textarea
-                      value={onboardInput}
-                      onChange={(e) => setOnboardInput(e.target.value)}
-                      placeholder="Write without filtering..."
-                    />
+                  <div className="ob-question">{ONBOARD_QUESTIONS[onboardStep].q}</div>
+                  <div className="ob-options">
+                    {ONBOARD_QUESTIONS[onboardStep].options.map((opt, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        className={`ob-option${onboardChoice === i ? ' sel' : ''}`}
+                        onClick={() => { setOnboardChoice(i); setOnboardCustom(''); stopDictation(); }}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
                   </div>
+
+                  <div className="ob-or">or, in your own words</div>
+                  <div className={`ob-custom${onboardCustom ? ' active' : ''}`}>
+                    <textarea
+                      value={onboardCustom}
+                      onChange={(e) => { setOnboardCustom(e.target.value); if (e.target.value) setOnboardChoice(null); }}
+                      placeholder="Type how it actually feels for you…"
+                      rows={2}
+                    />
+                    <button
+                      type="button"
+                      className={`ob-voice${onboardListening ? ' rec' : ''}`}
+                      onClick={toggleDictation}
+                      title={onboardListening ? 'Stop' : 'Speak'}
+                    >
+                      <Mic size={18} />
+                    </button>
+                  </div>
+                  {onboardListening && <div className="ob-listening">Listening… speak now</div>}
+
                   <div className="ob-foot">
-                    <div className="ob-mic">
-                      <div className="ob-mic-dot"></div>
-                      <span>Listening · 0:14</span>
-                    </div>
+                    <div className="ob-hint">Pick what's closest, or say it yourself — no wrong answer.</div>
                     <button
                       className="cta"
-                      disabled={!onboardInput.trim()}
+                      disabled={onboardChoice === null && !onboardCustom.trim()}
                       onClick={handleOnboardContinue}
                     >
                       {onboardStep + 1 < ONBOARD_QUESTIONS.length ? 'Continue →' : 'See my pattern →'}
@@ -637,26 +756,17 @@ export default function App() {
                 </div>
 
                 <div className="chat-input-wrap">
-                  {chats.length === 1 && !isTyping && (
+                  {!isTyping && chats.length > 0 && chats[chats.length - 1].sender === 'them' && (
                     <div className="quick-replies">
-                      <button 
-                        className="quick-reply" 
-                        onClick={() => selectQuickReply("I keep checking if he's online.")}
-                      >
-                        "I keep checking if he's online."
-                      </button>
-                      <button 
-                        className="quick-reply" 
-                        onClick={() => selectQuickReply("I feel small.")}
-                      >
-                        "I feel small."
-                      </button>
-                      <button 
-                        className="quick-reply" 
-                        onClick={() => selectQuickReply("Just tired.")}
-                      >
-                        "Just tired."
-                      </button>
+                      {QUICK_REPLIES.map((reply, i) => (
+                        <button
+                          key={i}
+                          className="quick-reply"
+                          onClick={() => selectQuickReply(reply)}
+                        >
+                          {reply}
+                        </button>
+                      ))}
                     </div>
                   )}
                   <div className="chat-input">

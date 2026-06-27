@@ -80,19 +80,19 @@ body::before {
 /* ============ STAGE ============ */
 .stage {
   position: relative;
-  display: flex; 
-  flex-direction: column; 
-  align-items: center; 
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   gap: 28px;
   z-index: 1;
 }
 
 .brand-bar {
-  display: flex; 
-  align-items: center; 
+  display: flex;
+  align-items: center;
   gap: 12px;
-  font-size: 13px; 
-  letter-spacing: 0.02em; 
+  font-size: 13px;
+  letter-spacing: 0.02em;
   color: rgba(232,227,216,0.7);
 }
 
@@ -122,7 +122,7 @@ body::before {
 
 /* ============ PHONE FRAME ============ */
 .phone {
-  width: 390px; 
+  width: 390px;
   height: 800px;
   border-radius: 56px;
   background: #0a0908;
@@ -136,19 +136,19 @@ body::before {
 }
 
 .phone::before {
-  content: ''; 
-  position: absolute; 
-  top: -2px; 
-  left: 50%; 
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: 50%;
   transform: translateX(-50%);
-  width: 60%; 
-  height: 4px; 
+  width: 60%;
+  height: 4px;
   background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
   border-radius: 0 0 4px 4px;
 }
 
 .screen {
-  width: 100%; 
+  width: 100%;
   height: 100%;
   border-radius: 44px;
   overflow: hidden;
@@ -158,14 +158,14 @@ body::before {
 }
 
 .notch {
-  position: absolute; 
-  top: 12px; 
-  left: 50%; 
+  position: absolute;
+  top: 12px;
+  left: 50%;
   transform: translateX(-50%);
-  width: 110px; 
+  width: 110px;
   height: 32px;
   background: #000;
-  border-radius: 16px; 
+  border-radius: 16px;
   z-index: 30;
 }
 
@@ -337,11 +337,12 @@ body::before {
 }
 
 /* ============ 2. ONBOARDING ============ */
-.ob-body { 
-  padding: 70px 32px 40px; 
-  flex: 1; 
-  display: flex; 
-  flex-direction: column; 
+.ob-body {
+  padding: 58px 28px 22px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
 }
 .ob-step { 
   font-size: 11px; 
@@ -349,10 +350,10 @@ body::before {
   text-transform: uppercase; 
   color: var(--muted); 
 }
-.ob-progress { 
-  display: flex; 
-  gap: 4px; 
-  margin: 14px 0 36px; 
+.ob-progress {
+  display: flex;
+  gap: 4px;
+  margin: 12px 0 20px;
 }
 .ob-progress span { 
   flex: 1; 
@@ -366,10 +367,10 @@ body::before {
 }
 .ob-question {
   font-family: 'Instrument Serif', serif;
-  font-size: 34px; 
-  line-height: 1.1; 
+  font-size: 27px;
+  line-height: 1.12;
   letter-spacing: -0.01em;
-  margin-bottom: 28px;
+  margin-bottom: 18px;
   color: var(--ink);
 }
 .ob-question em { 
@@ -407,19 +408,119 @@ body::before {
 }
 
 .ob-field-text::after {
-  content: '|'; 
-  color: var(--terra); 
+  content: '|';
+  color: var(--terra);
   margin-left: 2px;
   animation: caret 0.9s steps(2) infinite;
 }
 
 @keyframes caret { 50% { opacity: 0; } }
 
-.ob-foot { 
-  display: flex; 
-  justify-content: space-between; 
-  align-items: center; 
-  margin-top: 24px; 
+.ob-options {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.ob-option {
+  width: 100%;
+  text-align: left;
+  padding: 11px 15px;
+  background: rgba(217,119,87,0.05);
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  font-family: 'Instrument Serif', serif;
+  font-size: 15px;
+  line-height: 1.32;
+  color: var(--ink);
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s, transform 0.1s;
+}
+.ob-option:hover {
+  border-color: var(--terra-soft);
+  background: rgba(217,119,87,0.09);
+}
+.ob-option:active { transform: scale(0.99); }
+.ob-option.sel {
+  border-color: var(--terra);
+  background: rgba(217,119,87,0.14);
+  box-shadow: inset 0 0 0 1px var(--terra);
+}
+.ob-hint {
+  font-size: 12px;
+  color: var(--muted);
+  max-width: 60%;
+  line-height: 1.4;
+}
+
+.ob-or {
+  text-align: center;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 12px 0 8px;
+}
+.ob-custom {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  padding: 8px 8px 8px 14px;
+  background: rgba(217,119,87,0.05);
+  border: 1px dashed var(--terra-soft);
+  border-radius: 16px;
+  transition: border-color 0.2s, background 0.2s;
+}
+.ob-custom.active {
+  border-style: solid;
+  border-color: var(--terra);
+  background: rgba(217,119,87,0.1);
+}
+.ob-custom textarea {
+  flex: 1;
+  background: transparent;
+  border: none;
+  resize: none;
+  outline: none;
+  font-family: 'Instrument Serif', serif;
+  font-style: italic;
+  font-size: 15px;
+  line-height: 1.4;
+  color: var(--ink);
+}
+.ob-voice {
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 50%;
+  background: rgba(217,119,87,0.12);
+  color: var(--terra);
+  cursor: pointer;
+  transition: background 0.2s, transform 0.1s;
+}
+.ob-voice:hover { background: rgba(217,119,87,0.2); }
+.ob-voice:active { transform: scale(0.94); }
+.ob-voice.rec {
+  background: var(--terra);
+  color: #fff;
+  animation: pulse-dot 1.2s ease-in-out infinite;
+}
+.ob-listening {
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--terra);
+  text-align: center;
+}
+
+.ob-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: auto;
+  padding-top: 20px;
 }
 .ob-mic {
   display: flex; 
@@ -1349,7 +1450,7 @@ body::before {
   }
 }
 
-/* Scroll down fix for small screens */
+/* Scale the phone down on shorter viewports so it always fits */
 @media (max-height: 900px) {
   .phone { transform: scale(0.92); transform-origin: center; }
 }
