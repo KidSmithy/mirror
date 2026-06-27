@@ -1689,3 +1689,96 @@ body::before {
   border-color: var(--terra-soft);
   color: var(--cream);
 }
+
+/* Mirror interact section */
+.mirror-interact-section {
+  width: 100%;
+  margin-top: 24px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  text-align: left;
+}
+
+.mirror-interact-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--lavender-soft);
+  opacity: 0.8;
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.mirror-chat-textarea {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  padding: 12px 14px;
+  color: var(--cream);
+  font-size: 13px;
+  line-height: 1.5;
+  outline: none;
+  resize: none;
+  transition: all 0.3s ease;
+  font-family: inherit;
+}
+
+.mirror-chat-textarea:focus {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(155, 139, 180, 0.4);
+  box-shadow: 0 0 15px rgba(155, 139, 180, 0.1);
+}
+
+.mirror-interact-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+}
+
+.mirror-mic-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--cream);
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  font-size: 15px;
+}
+
+.mirror-mic-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: var(--lavender-soft);
+}
+
+.mirror-mic-btn.recording {
+  background: rgba(217, 119, 87, 0.2);
+  border-color: var(--terra);
+  color: var(--terra);
+  animation: mic-pulse 1.5s infinite alternate;
+}
+
+@keyframes mic-pulse {
+  0% { transform: scale(1); box-shadow: 0 0 0 rgba(217, 119, 87, 0); }
+  100% { transform: scale(1.08); box-shadow: 0 0 12px rgba(217, 119, 87, 0.4); }
+}
+
+.mirror-reflect-btn {
+  margin: 0;
+  padding: 8px 20px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  min-width: 100px;
+  cursor: pointer;
+}
+

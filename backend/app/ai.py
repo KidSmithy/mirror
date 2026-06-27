@@ -224,10 +224,25 @@ def generate_mirror_reflection_update(user_message: str, current_reflection: str
     Generates an updated reflection, ideal self reflection, and insight based on user's direct conversation with the mirror.
     """
     if not use_real_gemini:
+        # Smart dynamic naming based on message keywords in mock mode
+        msg_lower = user_message.lower()
+        if any(w in msg_lower for w in ["mother", "father", "parent", "family"]):
+            derived_style = "Generational Healing"
+        elif any(w in msg_lower for w in ["boundary", "no", "stop", "limit"]):
+            derived_style = "Boundary Attuning"
+        elif any(w in msg_lower for w in ["calm", "safe", "breath", "still", "ground"]):
+            derived_style = "Securely Grounded"
+        elif any(w in msg_lower for w in ["anxious", "scared", "fear", "panic", "worry"]):
+            derived_style = "Anxious-leaning (courageous)"
+        elif any(w in msg_lower for w in ["space", "distance", "independent", "alone"]):
+            derived_style = "Avoidant (softening)"
+        else:
+            derived_style = "Self-Attuning"
+
         return {
             "overall_reflection": f"Your mirror reflection has adjusted: {current_reflection} (Attuned to: '{user_message}')",
             "ideal_reflection": f"Your ideal self has evolved: {current_ideal} (Now centering on: '{user_message}')",
-            "attachment_style": attachment_style,
+            "attachment_style": derived_style,
             "insight": f"Direct attunement: {user_message[:30]}..."
         }
 
@@ -252,7 +267,7 @@ def generate_mirror_reflection_update(user_message: str, current_reflection: str
         1. Formulate an updated Overall Reflection that incorporates their new insight/message, showing how their current self-pattern is shifting.
         2. Formulate an updated Ideal Self Reflection that reflects a secure, integrated state aligned with their aspirations in their message.
         3. Formulate a 1-sentence Timeline Insight summarizing this moment of interaction.
-        4. Detect if their attachment style has shifted (or keep it similar/refined).
+        4. Generate a nuanced, poetic, and growth-oriented attachment style or psychological state name (e.g., 'Anxious-leaning (healing)', 'Grounded Boundary-Setter', 'Generational Healing', 'Avoidant (opening)', 'Securely Integrated') that reflects their current state of growth, healing, or progress as indicated by their message.
         
         Return your response in JSON format matching this schema:
         {{

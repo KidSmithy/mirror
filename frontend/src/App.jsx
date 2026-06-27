@@ -37,7 +37,9 @@ export default function App() {
   const [expandedTimelineId, setExpandedTimelineId] = useState(null);
   const [mirrorChatInput, setMirrorChatInput] = useState('');
   const [mirrorChatLoading, setMirrorChatLoading] = useState(false);
+  const [mirrorVoiceRecording, setMirrorVoiceRecording] = useState(false);
   const audioRef = useRef(null);
+  const mirrorRecognitionRef = useRef(null);
   
   // Interactive UI states
   const [loading, setLoading] = useState(false);
@@ -256,6 +258,33 @@ export default function App() {
     } finally {
       setMirrorChatLoading(false);
     }
+  };
+
+  const toggleMirrorVoice = () => {
+    if (mirrorVoiceRecording && mirrorRecognitionRef.current) {
+      mirrorRecognitionRef.current.stop();
+      setMirrorVoiceRecording(false);
+      return;
+    }
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert('Voice input is not supported in this browser.');
+      return;
+    }
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'en-US';
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+    mirrorRecognitionRef.current = recognition;
+    setMirrorVoiceRecording(true);
+    recognition.onresult = (event) => {
+      const transcript = event.results[0][0].transcript;
+      setMirrorChatInput(prev => prev ? prev + ' ' + transcript : transcript);
+      setMirrorVoiceRecording(false);
+    };
+    recognition.onerror = () => setMirrorVoiceRecording(false);
+    recognition.onend = () => setMirrorVoiceRecording(false);
+    recognition.start();
   };
 
   const getPatternDescription = (pattern) => {
@@ -784,7 +813,7 @@ export default function App() {
                       <div className="portrait-container">
                         {activeReflectionTab === 'current' ? (
                           <img 
-                            src={timeline.find(r => r.attachment_style.includes('healing'))?.image_url || timeline[0]?.image_url || "https://uqsflvuuhbxkgmrydvdd.supabase.co/storage/v1/object/public/reflections/enkh_june27.png"} 
+                            src={timeline[0]?.image_url || "https://uqsflvuuhbxkgmrydvdd.supabase.co/storage/v1/object/public/reflections/enkh_june27.png"} 
                             className="orb-portrait animate-pulse-slow" 
                             alt="Current Ghibli Reflection" 
                           />
@@ -866,34 +895,33 @@ export default function App() {
                         </div>
                       )}
 
-                      <div className="mirror-interact-input-container" style={{ width: '100%', marginTop: '24px', display: 'flex', gap: '8px', borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '16px' }}>
-                        <input
-                          type="text"
-                          placeholder="Type or tell the mirror what to reflect..."
+                      <div className="mirror-interact-section">
+                        <div className="mirror-interact-label">Speak to your reflection</div>
+                        <textarea
+                          placeholder="Tell the mirror what you're feeling, what you want to become, or ask it to reflect on something specific..."
                           value={mirrorChatInput}
                           onChange={(e) => setMirrorChatInput(e.target.value)}
-                          onKeyDown={(e) => e.key === 'Enter' && submitMirrorReflectionQuery()}
-                          className="mirror-chat-input"
-                          style={{
-                            flex: 1,
-                            background: 'rgba(255, 255, 255, 0.05)',
-                            border: '1px solid rgba(255, 255, 255, 0.1)',
-                            borderRadius: '12px',
-                            padding: '8px 12px',
-                            color: 'var(--cream)',
-                            fontSize: '12px',
-                            outline: 'none'
-                          }}
+                          onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submitMirrorReflectionQuery(); } }}
+                          className="mirror-chat-textarea"
+                          rows={3}
                           disabled={mirrorChatLoading}
                         />
-                        <button 
-                          className="cta cta-light"
-                          onClick={submitMirrorReflectionQuery}
-                          disabled={mirrorChatLoading || !mirrorChatInput.trim()}
-                          style={{ margin: 0, padding: '8px 16px', borderRadius: '12px', minWidth: '70px', fontSize: '11px' }}
-                        >
-                          {mirrorChatLoading ? '...' : 'Reflect'}
-                        </button>
+                        <div className="mirror-interact-actions">
+                          <button 
+                            className={`mirror-mic-btn ${mirrorVoiceRecording ? 'recording' : ''}`}
+                            onClick={toggleMirrorVoice}
+                            title={mirrorVoiceRecording ? 'Stop recording' : 'Voice input'}
+                          >
+                            {mirrorVoiceRecording ? '⏹' : '🎙'}
+                          </button>
+                          <button 
+                            className="cta cta-light mirror-reflect-btn"
+                            onClick={submitMirrorReflectionQuery}
+                            disabled={mirrorChatLoading || !mirrorChatInput.trim()}
+                          >
+                            {mirrorChatLoading ? 'Reflecting...' : 'Reflect ✦'}
+                          </button>
+                        </div>
                       </div>
 
                       <button className="cta cta-light" style={{ marginTop: '16px', width: '100%' }} onClick={() => { setShowReflection(false); setTtsPlaying(false); if (audioRef.current) audioRef.current.pause(); }}>
