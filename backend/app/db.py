@@ -94,8 +94,8 @@ class MockQueryBuilder:
         return _MockResponse(filtered_records)
 
 class MockSupabaseClient:
-    def __init__(self):
-        self.db_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "mock_db.json"))
+    def __init__(self, db_path=None):
+        self.db_path = db_path or os.getenv("MOCK_DB_PATH") or os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "mock_db.json"))
         self.db_store = {
             "journals": [],
             "chats": [],
