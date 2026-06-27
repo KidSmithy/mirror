@@ -1619,5 +1619,61 @@ body::before {
   background-color: var(--lavender);
 }
 
+/* ============ MOBILE RESPONSIVE RESET (NO STICKY FRAME) ============ */
+@media (max-width: 768px) {
+  html, body {
+    width: 100% !important;
+    height: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+  }
+  
+  body {
+    display: block !important; /* Disable flex centering of phone frame */
+    min-height: 100% !important;
+    background: var(--cream) !important;
+  }
+  
+  #root {
+    display: block !important;
+    width: 100% !important;
+    height: 100% !important;
+  }
 
+  .stage {
+    width: 100vw !important;
+    height: 100vh !important;
+    padding: 0 !important;
+    gap: 0 !important;
+    justify-content: flex-start !important;
+  }
 
+  .dev-switcher {
+    display: none !important; /* Hide dev tools on mobile screen */
+  }
+
+  .brand-bar {
+    display: none !important; /* Hide brand bar above phone */
+  }
+
+  .phone {
+    width: 100% !important;
+    height: 100% !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    transform: none !important;
+  }
+
+  .screen {
+    border-radius: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+  }
+
+  .notch {
+    display: none !important; /* Hide iPhone notch simulator */
+  }
+}
