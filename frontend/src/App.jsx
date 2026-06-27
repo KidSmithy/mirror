@@ -315,18 +315,18 @@ export default function App() {
         Journal
       </button>
       <button 
+        className={`tab tab-center ${screen === 'mirror' ? 'on' : ''}`}
+        onClick={() => { setScreen('mirror'); setMirrorSubScreen('intro'); }}
+      >
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>
+        Mirror
+      </button>
+      <button 
         className={`tab ${screen === 'chat' ? 'on' : ''}`}
         onClick={() => setScreen('chat')}
       >
         <svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 119 9H4l3-3a9 9 0 01-4-6z"/></svg>
         Chat
-      </button>
-      <button 
-        className={`tab ${screen === 'mirror' ? 'on' : ''}`}
-        onClick={() => { setScreen('mirror'); setMirrorSubScreen('intro'); }}
-      >
-        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>
-        Mirror
       </button>
       <button 
         className={`tab ${screen === 'map' ? 'on' : ''}`}
