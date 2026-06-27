@@ -90,6 +90,11 @@ def get_chats(topic: str = "general", user_id: str = Header(None, alias="x-user-
         if not response.data:
             greetings = {
                 "general": "What's on your mind tonight?",
+                "anxiety": "What's making your mind race today? Let's slow it down together.",
+                "depression": "However heavy today feels, I'm glad you're here. What's sitting with you?",
+                "trauma": "This is a safe, unhurried space — we'll go only where you choose. What feels okay to share right now?",
+                "grief": "Grief has its own time. Who or what are you holding in your heart today?",
+                "stress": "Let's set everything down for a moment. What's been pulling at you?",
                 "relationship": "How are your connections feeling today? I'm here to explore your relationship dynamics and attachment patterns.",
                 "mental": "Take a breath. What's showing up in your emotional landscape right now?",
                 "family": "Our childhood structures shape our adult self. What patterns from your family are you noticing today?"

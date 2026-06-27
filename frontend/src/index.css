@@ -1565,6 +1565,21 @@ body::before {
 .chat-avatar.avatar-family {
   background: radial-gradient(circle at 30% 30%, #F0F4F6, var(--muted) 80%);
 }
+.chat-avatar.avatar-anxiety {
+  background: radial-gradient(circle at 30% 30%, #FFE9C7, #E0A030 80%);
+}
+.chat-avatar.avatar-depression {
+  background: radial-gradient(circle at 30% 30%, #D9E2F0, #6B7FA3 80%);
+}
+.chat-avatar.avatar-trauma {
+  background: radial-gradient(circle at 30% 30%, #FCE9D8, var(--terra) 80%);
+}
+.chat-avatar.avatar-grief {
+  background: radial-gradient(circle at 30% 30%, #ECE6F0, #8B7E9B 80%);
+}
+.chat-avatar.avatar-stress {
+  background: radial-gradient(circle at 30% 30%, #FBE0D6, #D9876B 80%);
+}
 
 /* ============ CENTER TAB HIGHLIGHT ============ */
 .tab.tab-center {

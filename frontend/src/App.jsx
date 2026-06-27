@@ -748,6 +748,11 @@ export default function App() {
             {screen === 'chat' && (() => {
               const topicDetails = {
                 general: { name: "The Therapist", role: "Conscious layer", avatarClass: "avatar-general" },
+                anxiety: { name: "The Anxiety Specialist", role: "Worry & panic", avatarClass: "avatar-anxiety" },
+                depression: { name: "The Mood Guide", role: "Low mood & motivation", avatarClass: "avatar-depression" },
+                trauma: { name: "The Steady Presence", role: "A safe, gentle space", avatarClass: "avatar-trauma" },
+                grief: { name: "The Grief Companion", role: "Loss & bereavement", avatarClass: "avatar-grief" },
+                stress: { name: "The Burnout Coach", role: "Stress & overwhelm", avatarClass: "avatar-stress" },
                 relationship: { name: "The Relationship Guide", role: "Attachment patterns", avatarClass: "avatar-relationship" },
                 mental: { name: "The Wellness Coach", role: "Emotional regulation", avatarClass: "avatar-mental" },
                 family: { name: "The Family Specialist", role: "Childhood systems", avatarClass: "avatar-family" }
@@ -767,6 +772,11 @@ export default function App() {
 
                   <div className="chat-topics">
                     <button className={`topic-btn ${activeTopic === 'general' ? 'active' : ''}`} onClick={() => changeTopic('general')}>General</button>
+                    <button className={`topic-btn ${activeTopic === 'anxiety' ? 'active' : ''}`} onClick={() => changeTopic('anxiety')}>Anxiety</button>
+                    <button className={`topic-btn ${activeTopic === 'depression' ? 'active' : ''}`} onClick={() => changeTopic('depression')}>Depression</button>
+                    <button className={`topic-btn ${activeTopic === 'trauma' ? 'active' : ''}`} onClick={() => changeTopic('trauma')}>Trauma</button>
+                    <button className={`topic-btn ${activeTopic === 'grief' ? 'active' : ''}`} onClick={() => changeTopic('grief')}>Grief</button>
+                    <button className={`topic-btn ${activeTopic === 'stress' ? 'active' : ''}`} onClick={() => changeTopic('stress')}>Stress</button>
                     <button className={`topic-btn ${activeTopic === 'relationship' ? 'active' : ''}`} onClick={() => changeTopic('relationship')}>Relationships</button>
                     <button className={`topic-btn ${activeTopic === 'mental' ? 'active' : ''}`} onClick={() => changeTopic('mental')}>Calm</button>
                     <button className={`topic-btn ${activeTopic === 'family' ? 'active' : ''}`} onClick={() => changeTopic('family')}>Family</button>
