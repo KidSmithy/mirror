@@ -8,7 +8,9 @@ import {
   CheckCircle2
 } from 'lucide-react';
 
-const API_BASE = 'http://127.0.0.1:8000/api';
+const API_BASE = import.meta.env.DEV 
+  ? 'http://127.0.0.1:8000/api' 
+  : '/api';
 
 // List of test users matching backend/test_users.md
 const TEST_USERS = [
@@ -92,6 +94,7 @@ export default function App() {
   const [onboardChoice, setOnboardChoice] = useState(null);
   const [onboardCustom, setOnboardCustom] = useState('');
   const [onboardListening, setOnboardListening] = useState(false);
+  const [activeTopic, setActiveTopic] = useState('general'); // 'general' | 'relationship' | 'mental' | 'family'
   const [onboardStep, setOnboardStep] = useState(0);
   const [onboardAnswers, setOnboardAnswers] = useState([]);
   const recognitionRef = useRef(null);
@@ -132,7 +135,7 @@ export default function App() {
     try {
       const [journalRes, chatRes, obsRes, mapRes] = await Promise.all([
         axios.get(`${API_BASE}/journals`, { headers }),
-        axios.get(`${API_BASE}/chats`, { headers }),
+        axios.get(`${API_BASE}/chats?topic=general`, { headers }),
         axios.get(`${API_BASE}/observations`, { headers }),
         axios.get(`${API_BASE}/attachment-map`, { headers })
       ]);
@@ -158,6 +161,7 @@ export default function App() {
       setIsRecording(false);
       setSavedJournalTags([]);
       setChatInput('');
+      setActiveTopic('general');
       setScreen('home'); // Send to home on user switch
     }
   };
@@ -207,6 +211,20 @@ export default function App() {
     }
   };
 
+  const changeTopic = async (topic) => {
+    setActiveTopic(topic);
+    setLoading(true);
+    const headers = { 'x-user-id': currentUser.id };
+    try {
+      const res = await axios.get(`${API_BASE}/chats?topic=${topic}`, { headers });
+      setChats(res.data);
+    } catch (err) {
+      console.error("Error changing topic:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // --- CHAT LOGIC ---
   const sendChatMessage = async (textToSend) => {
     const message = textToSend || chatInput;
@@ -221,13 +239,14 @@ export default function App() {
       user_id: currentUser.id,
       created_at: new Date().toISOString(),
       sender: 'me',
-      message: message
+      message: message,
+      topic: activeTopic
     };
     setChats(prev => [...prev, userMsg]);
     setIsTyping(true);
 
     try {
-      const res = await axios.post(`${API_BASE}/chats`, { message }, { headers });
+      const res = await axios.post(`${API_BASE}/chats`, { message, topic: activeTopic }, { headers });
       setChats(prev => [...prev, res.data]);
     } catch (err) {
       console.error("Error sending message:", err);
@@ -395,18 +414,18 @@ export default function App() {
         Journal
       </button>
       <button 
+        className={`tab tab-center ${screen === 'mirror' ? 'on' : ''}`}
+        onClick={() => { setScreen('mirror'); setMirrorSubScreen('intro'); }}
+      >
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>
+        Mirror
+      </button>
+      <button 
         className={`tab ${screen === 'chat' ? 'on' : ''}`}
         onClick={() => setScreen('chat')}
       >
         <svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 119 9H4l3-3a9 9 0 01-4-6z"/></svg>
         Chat
-      </button>
-      <button 
-        className={`tab ${screen === 'mirror' ? 'on' : ''}`}
-        onClick={() => { setScreen('mirror'); setMirrorSubScreen('intro'); }}
-      >
-        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>
-        Mirror
       </button>
       <button 
         className={`tab ${screen === 'map' ? 'on' : ''}`}
@@ -726,18 +745,34 @@ export default function App() {
             )}
 
             {/* 6. CHAT */}
-            {screen === 'chat' && (
-              <div className="screen-content active">
-                <div className="chat-head">
-                  <div className="chat-back" onClick={() => setScreen('home')}>←</div>
-                  <div className="chat-avatar"></div>
-                  <div className="chat-name">
-                    The Therapist
-                    <small>Conscious layer</small>
+            {screen === 'chat' && (() => {
+              const topicDetails = {
+                general: { name: "The Therapist", role: "Conscious layer", avatarClass: "avatar-general" },
+                relationship: { name: "The Relationship Guide", role: "Attachment patterns", avatarClass: "avatar-relationship" },
+                mental: { name: "The Wellness Coach", role: "Emotional regulation", avatarClass: "avatar-mental" },
+                family: { name: "The Family Specialist", role: "Childhood systems", avatarClass: "avatar-family" }
+              };
+              const details = topicDetails[activeTopic] || topicDetails.general;
+              
+              return (
+                <div className="screen-content active">
+                  <div className="chat-head">
+                    <div className="chat-back" onClick={() => setScreen('home')}>←</div>
+                    <div className={`chat-avatar ${details.avatarClass}`}></div>
+                    <div className="chat-name">
+                      {details.name}
+                      <small>{details.role}</small>
+                    </div>
                   </div>
-                </div>
 
-                <div className="chat-body" ref={chatBodyRef}>
+                  <div className="chat-topics">
+                    <button className={`topic-btn ${activeTopic === 'general' ? 'active' : ''}`} onClick={() => changeTopic('general')}>General</button>
+                    <button className={`topic-btn ${activeTopic === 'relationship' ? 'active' : ''}`} onClick={() => changeTopic('relationship')}>Relationships</button>
+                    <button className={`topic-btn ${activeTopic === 'mental' ? 'active' : ''}`} onClick={() => changeTopic('mental')}>Calm</button>
+                    <button className={`topic-btn ${activeTopic === 'family' ? 'active' : ''}`} onClick={() => changeTopic('family')}>Family</button>
+                  </div>
+
+                  <div className="chat-body" ref={chatBodyRef}>
                   {chats.map((c, i) => (
                     <div 
                       key={c.id || i} 
@@ -775,7 +810,7 @@ export default function App() {
                       value={chatInput}
                       onChange={(e) => setChatInput(e.target.value)}
                       onKeyDown={(e) => e.key === 'Enter' && sendChatMessage()}
-                      placeholder="Reply to The Therapist…"
+                      placeholder={`Reply to ${details.name}…`}
                     />
                     <button 
                       className="chat-input-mic"
@@ -787,7 +822,8 @@ export default function App() {
                   </div>
                 </div>
               </div>
-            )}
+            );
+          })()}
 
             {/* 7. MIRROR */}
             {screen === 'mirror' && (

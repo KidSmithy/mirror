@@ -1513,3 +1513,96 @@ body::before {
   to { opacity: 1; transform: translateY(0); }
 }
 
+/* ============ CHAT TOPICS SWITCHER ============ */
+.chat-topics {
+  display: flex;
+  padding: 10px 24px;
+  gap: 8px;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--line);
+  background: rgba(250, 246, 239, 0.4);
+  flex-shrink: 0;
+  scrollbar-width: none; /* Firefox */
+}
+.chat-topics::-webkit-scrollbar {
+  display: none; /* Chrome/Safari */
+}
+
+.topic-btn {
+  padding: 6px 14px;
+  border-radius: 99px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid rgba(26, 24, 20, 0.1);
+  background: white;
+  color: var(--ink);
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+
+.topic-btn:hover {
+  background: var(--cream);
+  border-color: rgba(26, 24, 20, 0.2);
+}
+
+.topic-btn.active {
+  color: var(--cream);
+  border-color: var(--ink);
+  background: var(--ink);
+}
+
+/* Dynamic avatar style states */
+.chat-avatar.avatar-general {
+  background: radial-gradient(circle at 30% 30%, #FCE9D8, var(--terra) 80%);
+}
+.chat-avatar.avatar-relationship {
+  background: radial-gradient(circle at 30% 30%, #FFDFD3, #D97757 80%);
+}
+.chat-avatar.avatar-mental {
+  background: radial-gradient(circle at 30% 30%, #E8E5FF, var(--lavender) 80%);
+}
+.chat-avatar.avatar-family {
+  background: radial-gradient(circle at 30% 30%, #F0F4F6, var(--muted) 80%);
+}
+
+/* ============ CENTER TAB HIGHLIGHT ============ */
+.tab.tab-center {
+  position: relative;
+  font-weight: 600;
+  transform: scale(1.05); /* Slight enlargement to draw the eye */
+}
+
+.tab.tab-center svg {
+  stroke-width: 2.0; /* Bolder outline */
+  filter: drop-shadow(0 2px 4px rgba(217, 119, 87, 0.15));
+}
+
+.tab.tab-center.on svg {
+  filter: drop-shadow(0 4px 8px rgba(217, 119, 87, 0.3));
+}
+
+/* Central indicator dot representing the Mirror Core */
+.tab.tab-center::after {
+  content: '';
+  position: absolute;
+  bottom: -4px;
+  width: 5px;
+  height: 5px;
+  background-color: var(--terra);
+  border-radius: 50%;
+  opacity: 0.8;
+  transform: scale(0);
+  transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.tab.tab-center.on::after {
+  transform: scale(1);
+}
+
+.screen-content.dark .tab.tab-center::after {
+  background-color: var(--lavender);
+}
+
+
+

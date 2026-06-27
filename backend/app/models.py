@@ -16,6 +16,7 @@ class JournalResponse(BaseModel):
 
 class ChatCreate(BaseModel):
     message: str
+    topic: str = "general"
 
 class ChatResponse(BaseModel):
     id: str
@@ -23,6 +24,7 @@ class ChatResponse(BaseModel):
     created_at: datetime
     sender: str
     message: str
+    topic: str = "general"
 
 class ObservationFeedback(BaseModel):
     feedback: str # 'lands', 'not_yet', 'say_more'
