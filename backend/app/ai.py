@@ -217,3 +217,110 @@ def generate_weekly_observations(journals: list, chats: list) -> list:
     except Exception as e:
         logger.error(f"Gemini API error during Mirror observation generation: {e}")
         return []
+
+# Mock copy keyed by style, used when no Gemini key is configured.
+_MOCK_STYLE_PROFILES = {
+    "Anxious": {
+        "pattern_name": "The Pursuer-Protester",
+        "description": "You stay close. You over-tend. You're often the one who notices the silence before anyone else does.",
+        "quote": "\"You used the word 'almost' more than once. We can come back to that.\"",
+        "triggers": ["unanswered messages", "perceived withdrawal", "ambiguous tone"],
+    },
+    "Avoidant": {
+        "pattern_name": "The Quiet Withdrawer",
+        "description": "You keep your distance. You self-soothe. You're often the one who notices the pressure before anyone else does.",
+        "quote": "\"You reached for 'space' and 'tired' more than once. Protection has many shapes.\"",
+        "triggers": ["sudden closeness", "feeling managed", "high expectations"],
+    },
+    "Secure": {
+        "pattern_name": "The Steady Anchor",
+        "description": "You balance closeness and autonomy. You communicate clearly. You feel grounded in relationships.",
+        "quote": "\"A steady pulse. There is room in your stories for both yourself and the other.\"",
+        "triggers": ["prolonged conflict", "dishonesty", "unmet agreements"],
+    },
+    "Disorganized": {
+        "pattern_name": "The Push-Pull",
+        "description": "You want closeness and you fear it at once. You reach, then retract — the rhythm can feel exhausting from the inside.",
+        "quote": "\"You move toward and away in the same breath. That isn't failure; it's a learned safety.\"",
+        "triggers": ["intimacy after distance", "raised voices", "unpredictability"],
+    },
+}
+
+def assess_attachment_style(answers: list) -> dict:
+    """
+    Onboarding assessor. Infers attachment style from free-text scenario answers.
+    Returns a dict matching AssessmentResponse.
+    """
+    answers_text = "\n".join(f"Q{i+1}: {a}" for i, a in enumerate(answers) if a and a.strip())
+
+    if not use_real_gemini:
+        text = answers_text.lower()
+        scores = {"Anxious": 0, "Avoidant": 0, "Secure": 0}
+        keywords = {
+            "Anxious": ["almost", "check", "waiting", "reply", "anxious", "worry",
+                        "need", "silence", "notice", "close", "overthink", "reassur"],
+            "Avoidant": ["distance", "space", "alone", "tired", "put the phone down",
+                         "myself", "independent", "withdraw", "busy", "shut down", "pull away"],
+            "Secure": ["talk", "communicate", "calm", "okay", "understand",
+                       "comfortable", "trust", "honest"],
+        }
+        for style, kws in keywords.items():
+            for kw in kws:
+                if kw in text:
+                    scores[style] += 1
+
+        ranked = sorted(scores.items(), key=lambda x: x[1], reverse=True)
+        primary = ranked[0][0] if ranked[0][1] > 0 else "Anxious"
+        # Anxious + Avoidant both strongly present => disorganized (push-pull)
+        if scores["Anxious"] > 0 and scores["Avoidant"] > 0 and abs(scores["Anxious"] - scores["Avoidant"]) <= 1:
+            primary = "Disorganized"
+        secondary = ranked[1][0] if ranked[1][1] > 0 and ranked[1][0] != primary else None
+
+        profile = _MOCK_STYLE_PROFILES[primary]
+        return {
+            "primary_style": primary,
+            "secondary_style": secondary,
+            **profile,
+        }
+
+    try:
+        system_instruction = (
+            "You are the onboarding assessor for Mirror, an attachment-style companion. "
+            "Given a user's free-text answers to scenario questions, infer their attachment style. "
+            "Be warm, specific, and ground your read in their actual words. Never diagnose; this is self-inquiry."
+        )
+        prompt = f"""
+        Analyze these onboarding answers and classify the user's attachment style.
+
+        {answers_text}
+
+        Return raw JSON only (no markdown fences):
+        {{
+          "primary_style": "Anxious | Avoidant | Secure | Disorganized",
+          "secondary_style": "one of the above, or null",
+          "pattern_name": "a short, evocative handle, e.g. 'The Pursuer-Protester'",
+          "description": "2-3 sentences in second person ('You...'), warm and specific",
+          "quote": "a single short 'note from the Mirror' that references their own words",
+          "triggers": ["3 short trigger phrases inferred from their answers"]
+        }}
+        """
+        response = client.models.generate_content(
+            model='gemini-2.5-flash',
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                system_instruction=system_instruction,
+                response_mime_type="application/json",
+                temperature=0.4,
+            )
+        )
+        raw_json = response.text.strip()
+        if raw_json.startswith("```"):
+            raw_json = re.sub(r"^```json\s*", "", raw_json)
+            raw_json = re.sub(r"\s*```$", "", raw_json)
+        result = json.loads(raw_json)
+        result.setdefault("secondary_style", None)
+        result.setdefault("triggers", [])
+        return result
+    except Exception as e:
+        logger.error(f"Gemini API error during attachment assessment: {e}")
+        return {"primary_style": "Anxious", "secondary_style": None, **_MOCK_STYLE_PROFILES["Anxious"]}

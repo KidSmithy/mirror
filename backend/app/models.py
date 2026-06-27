@@ -43,3 +43,14 @@ class AttachmentMapResponse(BaseModel):
     anxious_count: int
     avoidant_count: int
     secure_count: int
+
+class OnboardingAssess(BaseModel):
+    answers: List[str]
+
+class AssessmentResponse(BaseModel):
+    primary_style: str
+    secondary_style: Optional[str] = None
+    pattern_name: str
+    description: str
+    quote: str
+    triggers: List[str] = []

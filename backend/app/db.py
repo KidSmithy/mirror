@@ -1,8 +1,14 @@
 import logging
+from datetime import date
 from supabase import create_client, Client
 from app.config import settings
 
 logger = logging.getLogger("mirror-db")
+
+
+class _MockResponse:
+    def __init__(self, data):
+        self.data = data
 
 # In-memory database fallback for seamless developer testing before Supabase credentials are set
 class MockQueryBuilder:
@@ -12,6 +18,7 @@ class MockQueryBuilder:
         self.filters = []
         self.order_by = None
         self.order_desc = False
+        self._pending = None  # holds result data for insert/update ops
 
     def select(self, columns: str = "*"):
         return self
@@ -26,6 +33,8 @@ class MockQueryBuilder:
         return self
 
     def execute(self):
+        if self._pending is not None:
+            return _MockResponse(self._pending)
         records = self.db_store.get(self.table_name, [])
         filtered_records = []
         for r in records:
@@ -39,15 +48,11 @@ class MockQueryBuilder:
         
         if self.order_by:
             filtered_records.sort(
-                key=lambda x: x.get(self.order_by, ""), 
+                key=lambda x: x.get(self.order_by, ""),
                 reverse=self.order_desc
             )
-        
-        # Wrap in a helper class that mimics postgrest response
-        class Response:
-            def __init__(self, data):
-                self.data = data
-        return Response(filtered_records)
+
+        return _MockResponse(filtered_records)
 
     def insert(self, data: dict):
         records = self.db_store.setdefault(self.table_name, [])
@@ -59,11 +64,9 @@ class MockQueryBuilder:
         else:
             records.append(data)
             inserted_data = [data]
-        
-        class Response:
-            def __init__(self, data):
-                self.data = data
-        return Response(inserted_data)
+
+        self._pending = inserted_data
+        return self
 
     def update(self, data: dict):
         # Simply find by ID in our filters and update
@@ -78,11 +81,9 @@ class MockQueryBuilder:
             if match:
                 r.update(data)
                 updated.append(r)
-        
-        class Response:
-            def __init__(self, data):
-                self.data = data
-        return Response(updated)
+
+        self._pending = updated
+        return self
 
 class MockSupabaseClient:
     def __init__(self):
@@ -112,6 +113,7 @@ class MockSupabaseClient:
             "attachment_map": [
                 {
                     "user_id": "e1a8b9c8-1234-5678-abcd-ef0123456789",
+                    "date": date.today().isoformat(),
                     "anxious_count": 12,
                     "avoidant_count": 7,
                     "secure_count": 19

@@ -1,3 +1,4 @@
+import logging
 import uuid
 from datetime import datetime, date
 from typing import List, Optional
@@ -10,13 +11,17 @@ from app.models import (
     JournalCreate, JournalResponse,
     ChatCreate, ChatResponse,
     ObservationFeedback, ObservationResponse,
-    AttachmentMapResponse
+    AttachmentMapResponse,
+    OnboardingAssess, AssessmentResponse
 )
 from app.ai import (
     generate_therapist_response,
     generate_journal_tags,
-    generate_weekly_observations
+    generate_weekly_observations,
+    assess_attachment_style
 )
+
+logger = logging.getLogger("mirror")
 
 app = FastAPI(title="Mirror API", version="1.0.0")
 
@@ -199,6 +204,19 @@ def generate_mirror_observations(user_id: str = Header(None, alias="x-user-id"))
         return saved_observations
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Mirror pipeline failed: {e}")
+
+@app.post("/api/onboarding/assess", response_model=AssessmentResponse)
+def assess_onboarding(payload: OnboardingAssess, user_id: str = Header(None, alias="x-user-id")):
+    """
+    Onboarding assessor: infers the user's attachment style from their free-text
+    scenario answers via the assessment agent.
+    """
+    if not payload.answers or not any(a and a.strip() for a in payload.answers):
+        raise HTTPException(status_code=400, detail="No answers provided to assess.")
+    try:
+        return assess_attachment_style(payload.answers)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Assessment failed: {e}")
 
 @app.get("/api/attachment-map", response_model=AttachmentMapResponse)
 def get_attachment_map(user_id: str = Header(None, alias="x-user-id")):

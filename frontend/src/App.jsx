@@ -19,6 +19,15 @@ const TEST_USERS = [
   { name: 'Morgan', id: 'c5e2f3a4-5678-9012-ef01-23456789abcd', pattern: 'Anxious-leaning' }
 ];
 
+// Scenario-based onboarding questions. Answers are sent to the assessor agent.
+const ONBOARD_QUESTIONS = [
+  "Your partner takes six hours to reply to a casual text. What's the first thing you feel?",
+  "Tell me about a time you almost reached out — but didn't.",
+  "When a relationship gets really close, what do you notice happening in you?",
+  "After a fight with someone you love, what do you usually do?",
+  "What's the story you catch yourself telling about why closeness is hard?"
+];
+
 export default function App() {
   // Developer user switcher state
   const [currentUser, setCurrentUser] = useState(TEST_USERS[0]);
@@ -32,9 +41,11 @@ export default function App() {
   
   // Interactive UI states
   const [loading, setLoading] = useState(false);
-  const [onboardInput, setOnboardInput] = useState(
-    "It was last March. I was driving home and I almost called my brother — I had my thumb on his name — but I imagined his voice already, tired, and I just put the phone down."
-  );
+  const [onboardInput, setOnboardInput] = useState('');
+  const [onboardStep, setOnboardStep] = useState(0);
+  const [onboardAnswers, setOnboardAnswers] = useState([]);
+  const [assessment, setAssessment] = useState(null);
+  const [assessing, setAssessing] = useState(false);
   const [journalInput, setJournalInput] = useState('');
   const [isRecording, setIsRecording] = useState(false);
   const [recordTime, setRecordTime] = useState(0);
@@ -171,6 +182,42 @@ export default function App() {
 
   const selectQuickReply = (replyText) => {
     sendChatMessage(replyText);
+  };
+
+  // --- ONBOARDING LOGIC ---
+  const startOnboarding = () => {
+    setOnboardStep(0);
+    setOnboardAnswers([]);
+    setOnboardInput('');
+    setAssessment(null);
+    setScreen('onboard');
+  };
+
+  const handleOnboardContinue = async () => {
+    const updatedAnswers = [...onboardAnswers, onboardInput.trim()];
+    setOnboardAnswers(updatedAnswers);
+
+    if (onboardStep + 1 < ONBOARD_QUESTIONS.length) {
+      setOnboardStep(onboardStep + 1);
+      setOnboardInput('');
+      return;
+    }
+
+    // Last question answered -> run the assessment agent
+    setAssessing(true);
+    setScreen('reveal');
+    try {
+      const res = await axios.post(
+        `${API_BASE}/onboarding/assess`,
+        { answers: updatedAnswers },
+        { headers: { 'x-user-id': currentUser.id } }
+      );
+      setAssessment(res.data);
+    } catch (err) {
+      console.error("Error assessing onboarding:", err);
+    } finally {
+      setAssessing(false);
+    }
   };
 
   // --- MIRROR LOGIC ---
@@ -325,7 +372,7 @@ export default function App() {
                   <div className="orb-large"></div>
                   <div className="welcome-title">Begin<br/><em>gently</em>.</div>
                   <p className="welcome-sub">Mirror learns who you are through stories, not questions.</p>
-                  <button className="cta" onClick={() => setScreen('onboard')}>I'm ready →</button>
+                  <button className="cta" onClick={startOnboarding}>I'm ready →</button>
                   <div className="welcome-meta">Takes about 5 minutes</div>
                 </div>
               </div>
@@ -335,11 +382,13 @@ export default function App() {
             {screen === 'onboard' && (
               <div className="screen-content active">
                 <div className="ob-body">
-                  <div className="ob-step">Question 3 of 5</div>
+                  <div className="ob-step">Question {onboardStep + 1} of {ONBOARD_QUESTIONS.length}</div>
                   <div className="ob-progress">
-                    <span className="on"></span><span className="on"></span><span className="on"></span><span></span><span></span>
+                    {ONBOARD_QUESTIONS.map((_, i) => (
+                      <span key={i} className={i <= onboardStep ? 'on' : ''}></span>
+                    ))}
                   </div>
-                  <div className="ob-question">Tell me about a time you <em>almost</em> reached out — but didn't.</div>
+                  <div className="ob-question">{ONBOARD_QUESTIONS[onboardStep]}</div>
                   <div className="ob-field">
                     <textarea
                       value={onboardInput}
@@ -352,7 +401,13 @@ export default function App() {
                       <div className="ob-mic-dot"></div>
                       <span>Listening · 0:14</span>
                     </div>
-                    <button className="cta" onClick={() => setScreen('reveal')}>Continue →</button>
+                    <button
+                      className="cta"
+                      disabled={!onboardInput.trim()}
+                      onClick={handleOnboardContinue}
+                    >
+                      {onboardStep + 1 < ONBOARD_QUESTIONS.length ? 'Continue →' : 'See my pattern →'}
+                    </button>
                   </div>
                 </div>
               </div>
@@ -362,23 +417,52 @@ export default function App() {
             {screen === 'reveal' && (
               <div className="screen-content active">
                 <div className="result-body">
-                  <div className="result-eye">Your pattern</div>
-                  <div className="result-title">
-                    {currentUser.pattern.replace('-leaning', '')}
-                    {currentUser.pattern.includes('-leaning') ? (
-                      <><em>-leaning</em>.</>
-                    ) : (
-                      <>.</>
-                    )}
-                  </div>
-                  <p className="result-desc">{getPatternDescription(currentUser.pattern)}</p>
-                  <div className="result-note">
-                    <div className="result-note-label">A note from the Mirror</div>
-                    <div className="result-note-quote">{getPatternQuote(currentUser.pattern)}</div>
-                  </div>
-                  <div className="result-cta">
-                    <button className="cta" onClick={() => setScreen('home')}>Enter Mirror</button>
-                  </div>
+                  {assessing ? (
+                    <>
+                      <div className="orb-large"></div>
+                      <div className="result-eye">Reading your stories</div>
+                      <div className="result-title">One moment<em>…</em></div>
+                      <p className="result-desc">The Mirror is listening for the shape beneath your words.</p>
+                    </>
+                  ) : (
+                    <>
+                      <div className="result-eye">Your pattern</div>
+                      <div className="result-title">
+                        {assessment ? assessment.pattern_name : (
+                          <>
+                            {currentUser.pattern.replace('-leaning', '')}
+                            {currentUser.pattern.includes('-leaning') ? <><em>-leaning</em>.</> : <>.</>}
+                          </>
+                        )}
+                      </div>
+                      {assessment && (
+                        <div className="result-eye" style={{ marginTop: 4, opacity: 0.65 }}>
+                          {assessment.primary_style}
+                          {assessment.secondary_style ? ` · with some ${assessment.secondary_style}` : ''}
+                        </div>
+                      )}
+                      <p className="result-desc">
+                        {assessment ? assessment.description : getPatternDescription(currentUser.pattern)}
+                      </p>
+                      <div className="result-note">
+                        <div className="result-note-label">A note from the Mirror</div>
+                        <div className="result-note-quote">
+                          {assessment ? assessment.quote : getPatternQuote(currentUser.pattern)}
+                        </div>
+                      </div>
+                      {assessment && assessment.triggers && assessment.triggers.length > 0 && (
+                        <div className="result-note">
+                          <div className="result-note-label">Patterns to watch</div>
+                          <div className="result-note-quote" style={{ fontStyle: 'normal' }}>
+                            {assessment.triggers.join(' · ')}
+                          </div>
+                        </div>
+                      )}
+                      <div className="result-cta">
+                        <button className="cta" onClick={() => setScreen('home')}>Enter Mirror</button>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
             )}
