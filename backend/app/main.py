@@ -18,8 +18,8 @@ from app.models import (
     JournalCreate, JournalResponse,
     ChatCreate, ChatResponse,
     ObservationFeedback, ObservationResponse,
-    AttachmentMapResponse,
-    OnboardingAssess, AssessmentResponse, ProfileResponse, ReflectionResponse
+    AttachmentMapResponse, OnboardingAssess, AssessmentResponse,
+    ProfileResponse, ReflectionResponse
 )
 from app.ai import (
     generate_therapist_response,

@@ -963,40 +963,42 @@ export default function App() {
                     {/* 7b. OBSERVATION SLIDES */}
                     {mirrorSubScreen === 'observation' && obsIndex < observations.length && (
                       <div className="screen-content dark active">
-                        <div className="obs-head">
-                          <div className="mirror-eye">Observation {obsIndex + 1} of {observations.length}</div>
-                          <div className="obs-title">On <em>{observations[obsIndex].category}</em>.</div>
-                        </div>
-                        <div className="obs-progress">
-                          <span>{obsIndex + 1}</span>
-                          <div className="obs-progress-bar">
-                            <div 
-                              className="obs-progress-fill" 
-                              style={{ width: `${((obsIndex + 1) / observations.length) * 100}%` }}
-                            />
+                        <div className="obs-scroll-container">
+                          <div className="obs-head">
+                            <div className="mirror-eye">Observation {obsIndex + 1} of {observations.length}</div>
+                            <div className="obs-title">On <em>{observations[obsIndex].category}</em>.</div>
                           </div>
-                          <span>{observations.length}</span>
-                        </div>
-                        <div className="obs-card">
-                          <div className="obs-quote">"{observations[obsIndex].quote}"</div>
-                          <div className="obs-evidence" dangerouslySetInnerHTML={{ __html: observations[obsIndex].evidence }} />
-                          <div className="obs-actions">
-                            {['lands', 'not_yet', 'say_more'].map((opt) => {
-                              const isSelected = observations[obsIndex].feedback === opt;
-                              return (
-                                <button
-                                  key={opt}
-                                  onClick={() => handleObsFeedback(observations[obsIndex].id, opt)}
-                                  className={`pill ${isSelected ? 'selected' : ''}`}
-                                  disabled={feedbackSubmitting}
+                          <div className="obs-progress">
+                            <span>{obsIndex + 1}</span>
+                            <div className="obs-progress-bar">
+                              <div 
+                                className="obs-progress-fill" 
+                                style={{ width: `${((obsIndex + 1) / observations.length) * 100}%` }}
+                              />
+                            </div>
+                            <span>{observations.length}</span>
+                          </div>
+                          <div className="obs-card">
+                            <div className="obs-quote">"{observations[obsIndex].quote}"</div>
+                            <div className="obs-evidence" dangerouslySetInnerHTML={{ __html: observations[obsIndex].evidence }} />
+                            <div className="obs-actions">
+                              {['lands', 'not_yet', 'say_more'].map((opt) => {
+                                const isSelected = observations[obsIndex].feedback === opt;
+                                return (
+                                  <button
+                                    key={opt}
+                                    onClick={() => handleObsFeedback(observations[obsIndex].id, opt)}
+                                    className={`pill ${isSelected ? 'selected' : ''}`}
+                                    disabled={feedbackSubmitting}
                                 >
-                                  {opt === 'lands' ? 'Lands' : opt === 'not_yet' ? 'Not yet' : 'Say more'}
-                                </button>
-                              );
-                            })}
+                                    {opt === 'lands' ? 'Lands' : opt === 'not_yet' ? 'Not yet' : 'Say more'}
+                                  </button>
+                                );
+                              })}
+                            </div>
                           </div>
+                          <div style={{ flex: 1 }}></div>
                         </div>
-                        <div style={{ flex: 1 }}></div>
                         {renderTabBar()}
                       </div>
                     )}
@@ -1004,59 +1006,61 @@ export default function App() {
                     {/* 7c. INTEGRATION / COMPLETE */}
                     {mirrorSubScreen === 'integration' && (
                       <div className="screen-content dark active">
-                        <div className="integ-head">
-                          <div className="orb-mirror" onClick={() => setShowReflection(true)} style={{ cursor: 'pointer', marginBottom: '16px' }}></div>
-                          <div className="mirror-eye">Session complete</div>
-                          <div className="obs-title">Sit <em>with this</em>.</div>
-                          <p className="mirror-sub" style={{ marginTop: '8px', marginBottom: 0 }}>There's nothing to do tonight.</p>
-                          <button 
-                            className="cta cta-outline" 
-                            style={{ marginTop: '12px', fontSize: '11px', padding: '6px 16px', opacity: 0.85 }}
-                            onClick={() => setShowReflection(true)}
-                          >
-                            View my Reflection ✦
-                          </button>
-                        </div>
-                        
-                        <div className="integ-card">
-                          <div className="integ-card-label">Optional · Tomorrow</div>
-                          <div className="integ-card-quote">"Write your mother a letter you'll never send. Use her name."</div>
-                          <div className="integ-card-footer">Prompt designed by your Therapist, in response.</div>
-                        </div>
-
-                        <div className="chart-wrap">
-                          <div className="chart-label">Your patterns · 6 weeks</div>
-                          <div className="chart-bars">
-                            {[30, 45, 65, 80, 90, 100].map((h, i) => {
-                              const colors = [
-                                'linear-gradient(180deg, var(--lavender-soft), transparent)',
-                                'linear-gradient(180deg, var(--lavender-soft), transparent)',
-                                'linear-gradient(180deg, var(--lavender-soft), transparent)',
-                                'linear-gradient(180deg, var(--terra-soft), transparent)',
-                                'linear-gradient(180deg, var(--terra-soft), transparent)',
-                                'linear-gradient(180deg, var(--terra-soft), var(--terra))'
-                              ];
-                              return (
-                                <div 
-                                  key={i} 
-                                  className="chart-bar" 
-                                  style={{ 
-                                    background: colors[i], 
-                                    height: `${h}%`,
-                                    animationDelay: `${i * 0.1}s` 
-                                  }}
-                                />
-                              );
-                            })}
+                        <div className="integ-scroll-container">
+                          <div className="integ-head">
+                            <div className="orb-mirror" onClick={() => setShowReflection(true)} style={{ cursor: 'pointer', marginBottom: '16px' }}></div>
+                            <div className="mirror-eye">Session complete</div>
+                            <div className="obs-title">Sit <em>with this</em>.</div>
+                            <p className="mirror-sub" style={{ marginTop: '8px', marginBottom: 0 }}>There's nothing to do tonight.</p>
+                            <button 
+                              className="cta cta-outline" 
+                              style={{ marginTop: '12px', fontSize: '11px', padding: '6px 16px', opacity: 0.85 }}
+                              onClick={() => setShowReflection(true)}
+                            >
+                              View my Reflection ✦
+                            </button>
                           </div>
-                          <div className="chart-axis"><span>W7</span><span>W8</span><span>W9</span><span>W10</span><span>W11</span><span>W12</span></div>
-                        </div>
+                          
+                          <div className="integ-card">
+                            <div className="integ-card-label">Optional · Tomorrow</div>
+                            <div className="integ-card-quote">"Write your mother a letter you'll never send. Use her name."</div>
+                            <div className="integ-card-footer">Prompt designed by your Therapist, in response.</div>
+                          </div>
 
-                        <div style={{ flex: 1 }}></div>
-                        <div style={{ padding: '12px 24px 14px' }}>
-                          <button className="cta cta-light" style={{ width: '100%' }} onClick={() => setScreen('map')}>
-                            See your Map →
-                          </button>
+                          <div className="chart-wrap">
+                            <div className="chart-label">Your patterns · 6 weeks</div>
+                            <div className="chart-bars">
+                              {[30, 45, 65, 80, 90, 100].map((h, i) => {
+                                const colors = [
+                                  'linear-gradient(180deg, var(--lavender-soft), transparent)',
+                                  'linear-gradient(180deg, var(--lavender-soft), transparent)',
+                                  'linear-gradient(180deg, var(--lavender-soft), transparent)',
+                                  'linear-gradient(180deg, var(--terra-soft), transparent)',
+                                  'linear-gradient(180deg, var(--terra-soft), transparent)',
+                                  'linear-gradient(180deg, var(--terra-soft), var(--terra))'
+                                ];
+                                return (
+                                  <div 
+                                    key={i} 
+                                    className="chart-bar" 
+                                    style={{ 
+                                      background: colors[i], 
+                                      height: `${h}%`,
+                                      animationDelay: `${i * 0.1}s` 
+                                    }}
+                                  />
+                                );
+                              })}
+                            </div>
+                            <div className="chart-axis"><span>W7</span><span>W8</span><span>W9</span><span>W10</span><span>W11</span><span>W12</span></div>
+                          </div>
+
+                          <div style={{ flex: 1 }}></div>
+                          <div style={{ padding: '12px 24px 14px' }}>
+                            <button className="cta cta-light" style={{ width: '100%' }} onClick={() => setScreen('map')}>
+                              See your Map →
+                            </button>
+                          </div>
                         </div>
                         {renderTabBar()}
                       </div>

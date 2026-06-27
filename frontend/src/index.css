@@ -548,6 +548,7 @@ body::before {
   flex: 1; 
   display: flex; 
   flex-direction: column; 
+  overflow-y: auto;
 }
 .result-eye {
   font-size: 11px; 
@@ -973,6 +974,7 @@ body::before {
   align-items: center; 
   justify-content: center; 
   text-align: center;
+  overflow-y: auto;
 }
 
 .orb-mirror {
@@ -1022,6 +1024,12 @@ body::before {
 }
 
 /* ============ 7. MIRROR OBSERVATION ============ */
+.obs-scroll-container, .integ-scroll-container {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
 .obs-head { 
   padding: 70px 28px 14px; 
   flex-shrink: 0;
@@ -1460,6 +1468,223 @@ body::before {
 }
 @media (max-height: 700px) {
   .phone { transform: scale(0.72); }
+}
+
+
+/* ============ JOURNAL STATUS BANNER ============ */
+.journal-status-banner {
+  padding: 12px 16px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  animation: journalFadeIn 0.3s ease-out;
+}
+
+.journal-status-banner.saving {
+  background: rgba(155, 139, 180, 0.12);
+  color: #4A3E66;
+  border: 1px solid rgba(155, 139, 180, 0.3);
+}
+
+.journal-status-banner.success {
+  background: rgba(34, 197, 94, 0.1);
+  color: #15803d;
+  border: 1px solid rgba(34, 197, 94, 0.25);
+}
+
+.journal-status-banner.error {
+  background: rgba(220, 38, 38, 0.08);
+  color: #b91c1c;
+  border: 1px solid rgba(220, 38, 38, 0.2);
+}
+
+.saving-spinner-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.spinner-dot {
+  width: 8px;
+  height: 8px;
+  background-color: currentColor;
+  border-radius: 50%;
+  animation: pulse-dot 1.2s infinite ease-in-out;
+}
+
+@keyframes journalFadeIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ============ CHAT TOPICS SWITCHER ============ */
+.chat-topics {
+  display: flex;
+  padding: 10px 24px;
+  gap: 8px;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--line);
+  background: rgba(250, 246, 239, 0.4);
+  flex-shrink: 0;
+  scrollbar-width: none; /* Firefox */
+}
+.chat-topics::-webkit-scrollbar {
+  display: none; /* Chrome/Safari */
+}
+
+.topic-btn {
+  padding: 6px 14px;
+  border-radius: 99px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid rgba(26, 24, 20, 0.1);
+  background: white;
+  color: var(--ink);
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+
+.topic-btn:hover {
+  background: var(--cream);
+  border-color: rgba(26, 24, 20, 0.2);
+}
+
+.topic-btn.active {
+  color: var(--cream);
+  border-color: var(--ink);
+  background: var(--ink);
+}
+
+/* Dynamic avatar style states */
+.chat-avatar.avatar-general {
+  background: radial-gradient(circle at 30% 30%, #FCE9D8, var(--terra) 80%);
+}
+.chat-avatar.avatar-relationship {
+  background: radial-gradient(circle at 30% 30%, #FFDFD3, #D97757 80%);
+}
+.chat-avatar.avatar-mental {
+  background: radial-gradient(circle at 30% 30%, #E8E5FF, var(--lavender) 80%);
+}
+.chat-avatar.avatar-family {
+  background: radial-gradient(circle at 30% 30%, #F0F4F6, var(--muted) 80%);
+}
+.chat-avatar.avatar-anxiety {
+  background: radial-gradient(circle at 30% 30%, #FFE9C7, #E0A030 80%);
+}
+.chat-avatar.avatar-depression {
+  background: radial-gradient(circle at 30% 30%, #D9E2F0, #6B7FA3 80%);
+}
+.chat-avatar.avatar-trauma {
+  background: radial-gradient(circle at 30% 30%, #FCE9D8, var(--terra) 80%);
+}
+.chat-avatar.avatar-grief {
+  background: radial-gradient(circle at 30% 30%, #ECE6F0, #8B7E9B 80%);
+}
+.chat-avatar.avatar-stress {
+  background: radial-gradient(circle at 30% 30%, #FBE0D6, #D9876B 80%);
+}
+
+/* ============ CENTER TAB HIGHLIGHT ============ */
+.tab.tab-center {
+  position: relative;
+  font-weight: 600;
+  transform: scale(1.05); /* Slight enlargement to draw the eye */
+}
+
+.tab.tab-center svg {
+  stroke-width: 2.0; /* Bolder outline */
+  filter: drop-shadow(0 2px 4px rgba(217, 119, 87, 0.15));
+}
+
+.tab.tab-center.on svg {
+  filter: drop-shadow(0 4px 8px rgba(217, 119, 87, 0.3));
+}
+
+/* Central indicator dot representing the Mirror Core */
+.tab.tab-center::after {
+  content: '';
+  position: absolute;
+  bottom: -4px;
+  width: 5px;
+  height: 5px;
+  background-color: var(--terra);
+  border-radius: 50%;
+  opacity: 0.8;
+  transform: scale(0);
+  transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.tab.tab-center.on::after {
+  transform: scale(1);
+}
+
+.screen-content.dark .tab.tab-center::after {
+  background-color: var(--lavender);
+}
+
+/* ============ MOBILE RESPONSIVE RESET (NO STICKY FRAME) ============ */
+@media (max-width: 768px) {
+  html, body {
+    width: 100% !important;
+    height: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+  }
+  
+  body {
+    display: block !important; /* Disable flex centering of phone frame */
+    min-height: 100% !important;
+    background: var(--cream) !important;
+  }
+  
+  #root {
+    display: block !important;
+    width: 100% !important;
+    height: 100% !important;
+  }
+
+  .stage {
+    width: 100vw !important;
+    height: 100vh !important;
+    padding: 0 !important;
+    gap: 0 !important;
+    justify-content: flex-start !important;
+  }
+
+  .dev-switcher {
+    display: none !important; /* Hide dev tools on mobile screen */
+  }
+
+  .brand-bar {
+    display: none !important; /* Hide brand bar above phone */
+  }
+
+  .phone {
+    width: 100% !important;
+    height: 100% !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    transform: none !important;
+  }
+
+  .screen {
+    border-radius: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+  }
+
+  .notch {
+    display: none !important; /* Hide iPhone notch simulator */
+  }
 }
 
 .reflection-overlay {
@@ -1928,218 +2153,3 @@ body::before {
 }
 
 
-/* ============ JOURNAL STATUS BANNER ============ */
-.journal-status-banner {
-  padding: 12px 16px;
-  border-radius: 12px;
-  font-size: 14px;
-  font-weight: 500;
-  margin-bottom: 16px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  animation: journalFadeIn 0.3s ease-out;
-}
-
-.journal-status-banner.saving {
-  background: rgba(155, 139, 180, 0.12);
-  color: #4A3E66;
-  border: 1px solid rgba(155, 139, 180, 0.3);
-}
-
-.journal-status-banner.success {
-  background: rgba(34, 197, 94, 0.1);
-  color: #15803d;
-  border: 1px solid rgba(34, 197, 94, 0.25);
-}
-
-.journal-status-banner.error {
-  background: rgba(220, 38, 38, 0.08);
-  color: #b91c1c;
-  border: 1px solid rgba(220, 38, 38, 0.2);
-}
-
-.saving-spinner-wrap {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.spinner-dot {
-  width: 8px;
-  height: 8px;
-  background-color: currentColor;
-  border-radius: 50%;
-  animation: pulse-dot 1.2s infinite ease-in-out;
-}
-
-@keyframes journalFadeIn {
-  from { opacity: 0; transform: translateY(-8px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-/* ============ CHAT TOPICS SWITCHER ============ */
-.chat-topics {
-  display: flex;
-  padding: 10px 24px;
-  gap: 8px;
-  overflow-x: auto;
-  border-bottom: 1px solid var(--line);
-  background: rgba(250, 246, 239, 0.4);
-  flex-shrink: 0;
-  scrollbar-width: none; /* Firefox */
-}
-.chat-topics::-webkit-scrollbar {
-  display: none; /* Chrome/Safari */
-}
-
-.topic-btn {
-  padding: 6px 14px;
-  border-radius: 99px;
-  font-size: 12px;
-  font-weight: 500;
-  cursor: pointer;
-  border: 1px solid rgba(26, 24, 20, 0.1);
-  background: white;
-  color: var(--ink);
-  white-space: nowrap;
-  transition: all 0.2s ease;
-}
-
-.topic-btn:hover {
-  background: var(--cream);
-  border-color: rgba(26, 24, 20, 0.2);
-}
-
-.topic-btn.active {
-  color: var(--cream);
-  border-color: var(--ink);
-  background: var(--ink);
-}
-
-/* Dynamic avatar style states */
-.chat-avatar.avatar-general {
-  background: radial-gradient(circle at 30% 30%, #FCE9D8, var(--terra) 80%);
-}
-.chat-avatar.avatar-relationship {
-  background: radial-gradient(circle at 30% 30%, #FFDFD3, #D97757 80%);
-}
-.chat-avatar.avatar-mental {
-  background: radial-gradient(circle at 30% 30%, #E8E5FF, var(--lavender) 80%);
-}
-.chat-avatar.avatar-family {
-  background: radial-gradient(circle at 30% 30%, #F0F4F6, var(--muted) 80%);
-}
-.chat-avatar.avatar-anxiety {
-  background: radial-gradient(circle at 30% 30%, #FFE9C7, #E0A030 80%);
-}
-.chat-avatar.avatar-depression {
-  background: radial-gradient(circle at 30% 30%, #D9E2F0, #6B7FA3 80%);
-}
-.chat-avatar.avatar-trauma {
-  background: radial-gradient(circle at 30% 30%, #FCE9D8, var(--terra) 80%);
-}
-.chat-avatar.avatar-grief {
-  background: radial-gradient(circle at 30% 30%, #ECE6F0, #8B7E9B 80%);
-}
-.chat-avatar.avatar-stress {
-  background: radial-gradient(circle at 30% 30%, #FBE0D6, #D9876B 80%);
-}
-
-/* ============ CENTER TAB HIGHLIGHT ============ */
-.tab.tab-center {
-  position: relative;
-  font-weight: 600;
-  transform: scale(1.05); /* Slight enlargement to draw the eye */
-}
-
-.tab.tab-center svg {
-  stroke-width: 2.0; /* Bolder outline */
-  filter: drop-shadow(0 2px 4px rgba(217, 119, 87, 0.15));
-}
-
-.tab.tab-center.on svg {
-  filter: drop-shadow(0 4px 8px rgba(217, 119, 87, 0.3));
-}
-
-/* Central indicator dot representing the Mirror Core */
-.tab.tab-center::after {
-  content: '';
-  position: absolute;
-  bottom: -4px;
-  width: 5px;
-  height: 5px;
-  background-color: var(--terra);
-  border-radius: 50%;
-  opacity: 0.8;
-  transform: scale(0);
-  transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-}
-
-.tab.tab-center.on::after {
-  transform: scale(1);
-}
-
-.screen-content.dark .tab.tab-center::after {
-  background-color: var(--lavender);
-}
-
-/* ============ MOBILE RESPONSIVE RESET (NO STICKY FRAME) ============ */
-@media (max-width: 768px) {
-  html, body {
-    width: 100% !important;
-    height: 100% !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    overflow: hidden !important;
-  }
-  
-  body {
-    display: block !important; /* Disable flex centering of phone frame */
-    min-height: 100% !important;
-    background: var(--cream) !important;
-  }
-  
-  #root {
-    display: block !important;
-    width: 100% !important;
-    height: 100% !important;
-  }
-
-  .stage {
-    width: 100vw !important;
-    height: 100vh !important;
-    padding: 0 !important;
-    gap: 0 !important;
-    justify-content: flex-start !important;
-  }
-
-  .dev-switcher {
-    display: none !important; /* Hide dev tools on mobile screen */
-  }
-
-  .brand-bar {
-    display: none !important; /* Hide brand bar above phone */
-  }
-
-  .phone {
-    width: 100% !important;
-    height: 100% !important;
-    border-radius: 0 !important;
-    padding: 0 !important;
-    box-shadow: none !important;
-    background: transparent !important;
-    transform: none !important;
-  }
-
-  .screen {
-    border-radius: 0 !important;
-    width: 100% !important;
-    height: 100% !important;
-  }
-
-  .notch {
-    display: none !important; /* Hide iPhone notch simulator */
-  }
-}

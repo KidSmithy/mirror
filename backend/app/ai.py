@@ -418,7 +418,6 @@ def assess_attachment_style(answers: list) -> dict:
         logger.error(f"Gemini API error during attachment assessment: {e}")
         return {"primary_style": "Anxious", "secondary_style": None, **_MOCK_STYLE_PROFILES["Anxious"]}
 
-
 def generate_mirror_reflection_update(user_message: str, current_reflection: str, current_ideal: str, attachment_style: str) -> dict:
     """
     Generates an updated reflection, ideal self reflection, and insight based on user's direct conversation with the mirror.
@@ -505,4 +504,3 @@ def generate_mirror_reflection_update(user_message: str, current_reflection: str
             "attachment_style": attachment_style,
             "insight": f"Attuned: {user_message[:30]}"
         }
-

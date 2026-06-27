@@ -74,5 +74,3 @@ class ReflectionResponse(BaseModel):
     attachment_style: str
     insight: Optional[str] = None
     image_url: Optional[str] = None
-
-
