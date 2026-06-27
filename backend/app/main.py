@@ -10,12 +10,15 @@ from app.models import (
     JournalCreate, JournalResponse,
     ChatCreate, ChatResponse,
     ObservationFeedback, ObservationResponse,
-    AttachmentMapResponse, ProfileResponse
+    AttachmentMapResponse, ProfileResponse, ReflectionResponse
 )
 from app.ai import (
     generate_therapist_response,
     generate_journal_tags,
-    generate_weekly_observations
+    generate_weekly_observations,
+    client,
+    types,
+    use_real_gemini
 )
 
 app = FastAPI(title="Mirror API", version="1.0.0")
@@ -88,6 +91,90 @@ def get_profile(user_id: str = Header(None, alias="x-user-id")):
         raise HTTPException(status_code=404, detail="Profile not found")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Database error: {e}")
+
+from fastapi.responses import Response
+
+@app.get("/api/reflections", response_model=List[ReflectionResponse])
+def get_reflections(user_id: str = Header(None, alias="x-user-id")):
+    uid = get_current_user_id(user_id)
+    try:
+        response = supabase_client.table("reflections").select("*").eq("user_id", uid).order("created_at", desc=True).execute()
+        if response.data:
+            return response.data
+            
+        # Fallback timeline reflections for mock client
+        mock_timeline = [
+            {
+                "id": "11111111-2222-3333-4444-555555555551",
+                "user_id": uid,
+                "created_at": "2026-06-01T12:00:00Z",
+                "overall_reflection": "You are highly active, checking constantly for validation. Your pulse spikes during silences and you feel a powerful urge to double-text or explain yourself to prevent distance. The fear of quietness is extremely high, prompting immediate anxious checking behavior.",
+                "attachment_style": "Anxious-leaning",
+                "insight": "Initial attunement: Recognized hyper-vigilance during relationship silence.",
+                "image_url": "https://uqsflvuuhbxkgmrydvdd.supabase.co/storage/v1/object/public/reflections/enkh_june1.png"
+            },
+            {
+                "id": "11111111-2222-3333-4444-555555555552",
+                "user_id": uid,
+                "created_at": "2026-06-12T12:00:00Z",
+                "overall_reflection": "You are beginning to step back and recognize the space you need. While the anxiety is still present, you are pausing before checking your phone, attempting to sit with the silence. There is a slight calming of the pulse as you intellectualize the urge to merge.",
+                "attachment_style": "Anxious-leaning (aware)",
+                "insight": "Behavior shift: Paused double-texting urge and noted body tension instead.",
+                "image_url": "https://uqsflvuuhbxkgmrydvdd.supabase.co/storage/v1/object/public/reflections/enkh_june12.png"
+            },
+            {
+                "id": "11111111-2222-3333-4444-555555555553",
+                "user_id": uid,
+                "created_at": "2026-06-27T12:00:00Z",
+                "overall_reflection": "You seek safety in proximity, holding tight to avoid the chill of distance. Your reflection shows a deeply caring heart that sometimes forgets its own boundaries in the search for reassurance. In silence, you hear rejection; in space, you fear abandonment. The mirror invites you to breathe, to step back, and to trust that you are whole even when standing alone.",
+                "attachment_style": "Anxious-leaning (healing)",
+                "insight": "Self-soothing: Attuned to the difference between space and abandonment.",
+                "image_url": "https://uqsflvuuhbxkgmrydvdd.supabase.co/storage/v1/object/public/reflections/enkh_june27.png"
+            }
+        ]
+        return mock_timeline
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Database error: {e}")
+
+@app.post("/api/tts")
+def generate_tts(data: dict):
+    text = data.get("text", "")
+    if not text:
+        raise HTTPException(status_code=400, detail="Text is required")
+        
+    if not use_real_gemini:
+        raise HTTPException(status_code=500, detail="Real Gemini client is not initialized.")
+
+    try:
+        response = client.models.generate_content(
+            model='gemini-2.0-flash',
+            contents=f"Read the following self-reflection aloud with a calm, gentle, therapeutic voice: {text}",
+            config=types.GenerateContentConfig(
+                response_modalities=["AUDIO"],
+                speech_config=types.SpeechConfig(
+                    voice_config=types.VoiceConfig(
+                        prebuilt_voice_config=types.PrebuiltVoiceConfig(
+                            voice_name="Aoede"
+                        )
+                    )
+                )
+            )
+        )
+        
+        audio_bytes = None
+        for candidate in response.candidates:
+            for part in candidate.content.parts:
+                if part.inline_data and part.inline_data.mime_type.startswith("audio/"):
+                    audio_bytes = part.inline_data.data
+                    break
+                    
+        if audio_bytes:
+            return Response(content=audio_bytes, media_type="audio/mp3")
+            
+        raise HTTPException(status_code=500, detail="No audio returned from Gemini")
+    except Exception as e:
+        logger.error(f"Gemini TTS error: {e}")
+        raise HTTPException(status_code=500, detail=f"TTS generation failed: {e}")
 
 
 @app.get("/api/journals", response_model=List[JournalResponse])

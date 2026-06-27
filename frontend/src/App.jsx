@@ -31,6 +31,11 @@ export default function App() {
   const [attachmentMap, setAttachmentMap] = useState(null);
   const [profile, setProfile] = useState(null);
   const [showReflection, setShowReflection] = useState(false);
+  const [timeline, setTimeline] = useState([]);
+  const [activeReflectionTab, setActiveReflectionTab] = useState('current'); // 'current' | 'ideal'
+  const [ttsPlaying, setTtsPlaying] = useState(false);
+  const [expandedTimelineId, setExpandedTimelineId] = useState(null);
+  const audioRef = useRef(null);
   
   // Interactive UI states
   const [loading, setLoading] = useState(false);
@@ -70,12 +75,13 @@ export default function App() {
     setLoading(true);
     const headers = { 'x-user-id': currentUser.id };
     try {
-      const [journalRes, chatRes, obsRes, mapRes, profileRes] = await Promise.all([
+      const [journalRes, chatRes, obsRes, mapRes, profileRes, reflectionsRes] = await Promise.all([
         axios.get(`${API_BASE}/journals`, { headers }),
         axios.get(`${API_BASE}/chats`, { headers }),
         axios.get(`${API_BASE}/observations`, { headers }),
         axios.get(`${API_BASE}/attachment-map`, { headers }),
-        axios.get(`${API_BASE}/profile`, { headers }).catch(() => ({ data: null }))
+        axios.get(`${API_BASE}/profile`, { headers }).catch(() => ({ data: null })),
+        axios.get(`${API_BASE}/reflections`, { headers }).catch(() => ({ data: [] }))
       ]);
       
       setJournals(journalRes.data);
@@ -83,6 +89,7 @@ export default function App() {
       setObservations(obsRes.data);
       setAttachmentMap(mapRes.data);
       setProfile(profileRes ? profileRes.data : null);
+      setTimeline(reflectionsRes ? reflectionsRes.data : []);
       setObsIndex(0);
     } catch (err) {
       console.error("Error loading user data from backend:", err);
@@ -209,6 +216,26 @@ export default function App() {
       }, 500);
     } catch (err) {
       console.error("Error submitting feedback:", err);
+    }
+  };
+
+  const playTTS = async (text) => {
+    if (ttsPlaying && audioRef.current) {
+      audioRef.current.pause();
+      setTtsPlaying(false);
+      return;
+    }
+    setTtsPlaying(true);
+    try {
+      const response = await axios.post(`${API_BASE}/tts`, { text }, { responseType: 'blob' });
+      const audioUrl = URL.createObjectURL(response.data);
+      const audio = new Audio(audioUrl);
+      audioRef.current = audio;
+      audio.onended = () => setTtsPlaying(false);
+      audio.play();
+    } catch (err) {
+      console.error("Gemini TTS playback failed:", err);
+      setTtsPlaying(false);
     }
   };
 
@@ -658,9 +685,17 @@ export default function App() {
                     {mirrorSubScreen === 'integration' && (
                       <div className="screen-content dark active">
                         <div className="integ-head">
+                          <div className="orb-mirror" onClick={() => setShowReflection(true)} style={{ cursor: 'pointer', marginBottom: '16px' }}></div>
                           <div className="mirror-eye">Session complete</div>
                           <div className="obs-title">Sit <em>with this</em>.</div>
                           <p className="mirror-sub" style={{ marginTop: '8px', marginBottom: 0 }}>There's nothing to do tonight.</p>
+                          <button 
+                            className="cta cta-outline" 
+                            style={{ marginTop: '12px', fontSize: '11px', padding: '6px 16px', opacity: 0.85 }}
+                            onClick={() => setShowReflection(true)}
+                          >
+                            View my Reflection ✦
+                          </button>
                         </div>
                         
                         <div className="integ-card">
@@ -709,22 +744,110 @@ export default function App() {
                   </>
                 )}
                 {showReflection && (
-                  <div className="reflection-overlay animate-fade-in" onClick={() => setShowReflection(false)}>
+                  <div className="reflection-overlay animate-fade-in" onClick={() => { setShowReflection(false); setTtsPlaying(false); if (audioRef.current) audioRef.current.pause(); }}>
                     <div className="reflection-modal" onClick={(e) => e.stopPropagation()}>
-                      <div className="orb-mirror-expanded animate-pulse-slow"></div>
+                      
+                      <div className="reflection-tabs">
+                        <button 
+                          className={`reflection-tab ${activeReflectionTab === 'current' ? 'active' : ''}`}
+                          onClick={() => { setActiveReflectionTab('current'); setTtsPlaying(false); if (audioRef.current) audioRef.current.pause(); }}
+                        >
+                          Current Self
+                        </button>
+                        <button 
+                          className={`reflection-tab ${activeReflectionTab === 'ideal' ? 'active' : ''}`}
+                          onClick={() => { setActiveReflectionTab('ideal'); setTtsPlaying(false); if (audioRef.current) audioRef.current.pause(); }}
+                        >
+                          Ideal Self
+                        </button>
+                      </div>
+
+                      <div className="portrait-container">
+                        {activeReflectionTab === 'current' ? (
+                          <img 
+                            src={timeline.find(r => r.attachment_style.includes('healing'))?.image_url || timeline[0]?.image_url || "https://uqsflvuuhbxkgmrydvdd.supabase.co/storage/v1/object/public/reflections/enkh_june27.png"} 
+                            className="orb-portrait animate-pulse-slow" 
+                            alt="Current Ghibli Reflection" 
+                          />
+                        ) : (
+                          <img 
+                            src={profile?.ideal_image_url || "https://uqsflvuuhbxkgmrydvdd.supabase.co/storage/v1/object/public/reflections/enkh_ideal.png"} 
+                            className="orb-portrait animate-pulse-slow" 
+                            alt="Ideal Ghibli Reflection" 
+                          />
+                        )}
+                      </div>
+
                       <div className="reflection-title">
-                        Through the <em>looking glass</em>
+                        {activeReflectionTab === 'current' ? (
+                          <>Through the <em>looking glass</em></>
+                        ) : (
+                          <>Your <em>ideal reflection</em></>
+                        )}
                       </div>
                       <div className="reflection-name">
                         {profile?.name || currentUser.name}
                       </div>
                       <div className="reflection-style">
-                        {profile?.attachment_style || currentUser.pattern}
+                        {activeReflectionTab === 'current' ? (profile?.attachment_style || currentUser.pattern) : "Secure Alignment"}
                       </div>
+                      
+                      <div className="tts-wrap">
+                        <button 
+                          className={`tts-button ${ttsPlaying ? 'playing' : ''}`}
+                          onClick={() => playTTS(activeReflectionTab === 'current' ? (profile?.overall_reflection || timeline[0]?.overall_reflection) : profile?.ideal_reflection)}
+                        >
+                          {ttsPlaying ? '🔊 Playing...' : '🔈 Listen'}
+                        </button>
+                      </div>
+
                       <p className="reflection-text">
-                        {profile?.overall_reflection || "The mirror is dark. Speak to it through journals and chats to reveal your reflection."}
+                        {activeReflectionTab === 'current' ? (
+                          (profile?.overall_reflection || timeline[0]?.overall_reflection || "The mirror is dark. Speak to it through journals and chats to reveal your reflection.")
+                        ) : (
+                          (profile?.ideal_reflection || "A peaceful, secure reflection is taking shape. Keep writing to clarify this vision.")
+                        )}
                       </p>
-                      <button className="cta cta-light" onClick={() => setShowReflection(false)}>
+
+                      {activeReflectionTab === 'current' && timeline.length > 0 && (
+                        <div className="reflection-timeline-container">
+                          <div className="timeline-title">Self-Inquiry Timeline</div>
+                          <div className="timeline-list">
+                            {timeline.map((item) => {
+                              const isExpanded = expandedTimelineId === item.id;
+                              const formattedDate = new Date(item.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                              return (
+                                <div key={item.id} className="timeline-item">
+                                  <div className="timeline-node-wrap">
+                                    <span className="timeline-node"></span>
+                                    <span className="timeline-date">{formattedDate}</span>
+                                  </div>
+                                  <div 
+                                    className={`timeline-card ${isExpanded ? 'expanded' : ''}`}
+                                    onClick={() => setExpandedTimelineId(isExpanded ? null : item.id)}
+                                  >
+                                    <div className="timeline-card-header">
+                                      <img src={item.image_url} className="timeline-avatar" alt="Ghibli avatar" />
+                                      <div className="timeline-card-meta">
+                                        <div className="timeline-card-style">{item.attachment_style}</div>
+                                        <div className="timeline-card-insight">{item.insight}</div>
+                                      </div>
+                                      <span className="timeline-card-arrow">{isExpanded ? '▲' : '▼'}</span>
+                                    </div>
+                                    {isExpanded && (
+                                      <p className="timeline-card-text animate-fade-in">
+                                        {item.overall_reflection}
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      <button className="cta cta-light" style={{ marginTop: '16px' }} onClick={() => { setShowReflection(false); setTtsPlaying(false); if (audioRef.current) audioRef.current.pause(); }}>
                         Step back
                       </button>
                     </div>

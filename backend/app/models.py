@@ -50,4 +50,16 @@ class ProfileResponse(BaseModel):
     name: str
     overall_reflection: str
     attachment_style: str
+    ideal_reflection: Optional[str] = None
+    ideal_image_url: Optional[str] = None
+
+class ReflectionResponse(BaseModel):
+    id: str
+    user_id: str
+    created_at: datetime
+    overall_reflection: str
+    attachment_style: str
+    insight: Optional[str] = None
+    image_url: Optional[str] = None
+
 
