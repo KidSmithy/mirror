@@ -16,6 +16,7 @@ from app.ai import (
     generate_therapist_response,
     generate_journal_tags,
     generate_weekly_observations,
+    generate_mirror_reflection_update,
     client,
     types,
     use_real_gemini
@@ -175,6 +176,71 @@ def generate_tts(data: dict):
     except Exception as e:
         logger.error(f"Gemini TTS error: {e}")
         raise HTTPException(status_code=500, detail=f"TTS generation failed: {e}")
+
+
+@app.post("/api/reflections/interact")
+def interact_with_mirror(data: dict, user_id: str = Header(None, alias="x-user-id")):
+    uid = get_current_user_id(user_id)
+    message = data.get("message", "").strip()
+    if not message:
+        raise HTTPException(status_code=400, detail="Message is required")
+        
+    try:
+        # 1. Fetch current profile from Supabase
+        prof_res = supabase_client.table("profiles").select("*").eq("id", uid).execute()
+        if not prof_res.data:
+            raise HTTPException(status_code=404, detail="Profile not found")
+            
+        profile = prof_res.data[0]
+        current_reflection = profile.get("overall_reflection") or ""
+        current_ideal = profile.get("ideal_reflection") or ""
+        attachment_style = profile.get("attachment_style") or "Secure"
+        
+        # 2. Call Gemini to generate the updated reflection & ideal self
+        update = generate_mirror_reflection_update(
+            user_message=message,
+            current_reflection=current_reflection,
+            current_ideal=current_ideal,
+            attachment_style=attachment_style
+        )
+        
+        # 3. Save the new profile updates
+        new_overall = update.get("overall_reflection", current_reflection)
+        new_ideal = update.get("ideal_reflection", current_ideal)
+        new_style = update.get("attachment_style", attachment_style)
+        
+        supabase_client.table("profiles").update({
+            "overall_reflection": new_overall,
+            "ideal_reflection": new_ideal,
+            "attachment_style": new_style
+        }).eq("id", uid).execute()
+        
+        # 4. Create a new timeline entry in reflections table
+        # Find the image of the previous reflection or use default
+        last_ref = supabase_client.table("reflections").select("image_url").eq("user_id", uid).order("created_at", desc=True).limit(1).execute()
+        image_url = "https://uqsflvuuhbxkgmrydvdd.supabase.co/storage/v1/object/public/reflections/enkh_june27.png"
+        if last_ref.data and last_ref.data[0].get("image_url"):
+            image_url = last_ref.data[0]["image_url"]
+            
+        new_ref_id = str(uuid.uuid4())
+        supabase_client.table("reflections").insert({
+            "id": new_ref_id,
+            "user_id": uid,
+            "overall_reflection": new_overall,
+            "attachment_style": new_style,
+            "insight": update.get("insight", "Direct conversation with Mirror"),
+            "image_url": image_url
+        }).execute()
+        
+        return {
+            "status": "success",
+            "overall_reflection": new_overall,
+            "ideal_reflection": new_ideal,
+            "attachment_style": new_style
+        }
+    except Exception as e:
+        logger.error(f"Error during mirror interaction: {e}")
+        raise HTTPException(status_code=500, detail=f"Mirror interaction failed: {e}")
 
 
 @app.get("/api/journals", response_model=List[JournalResponse])

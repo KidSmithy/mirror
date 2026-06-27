@@ -35,6 +35,8 @@ export default function App() {
   const [activeReflectionTab, setActiveReflectionTab] = useState('current'); // 'current' | 'ideal'
   const [ttsPlaying, setTtsPlaying] = useState(false);
   const [expandedTimelineId, setExpandedTimelineId] = useState(null);
+  const [mirrorChatInput, setMirrorChatInput] = useState('');
+  const [mirrorChatLoading, setMirrorChatLoading] = useState(false);
   const audioRef = useRef(null);
   
   // Interactive UI states
@@ -236,6 +238,23 @@ export default function App() {
     } catch (err) {
       console.error("Gemini TTS playback failed:", err);
       setTtsPlaying(false);
+    }
+  };
+
+  const submitMirrorReflectionQuery = async () => {
+    if (!mirrorChatInput.trim() || mirrorChatLoading) return;
+    setMirrorChatLoading(true);
+    const headers = { 'x-user-id': currentUser.id };
+    try {
+      const res = await axios.post(`${API_BASE}/reflections/interact`, { message: mirrorChatInput }, { headers });
+      if (res.data && res.data.status === "success") {
+        await fetchUserData();
+        setMirrorChatInput('');
+      }
+    } catch (err) {
+      console.error("Error updating reflection from mirror interaction:", err);
+    } finally {
+      setMirrorChatLoading(false);
     }
   };
 
@@ -847,7 +866,37 @@ export default function App() {
                         </div>
                       )}
 
-                      <button className="cta cta-light" style={{ marginTop: '16px' }} onClick={() => { setShowReflection(false); setTtsPlaying(false); if (audioRef.current) audioRef.current.pause(); }}>
+                      <div className="mirror-interact-input-container" style={{ width: '100%', marginTop: '24px', display: 'flex', gap: '8px', borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '16px' }}>
+                        <input
+                          type="text"
+                          placeholder="Type or tell the mirror what to reflect..."
+                          value={mirrorChatInput}
+                          onChange={(e) => setMirrorChatInput(e.target.value)}
+                          onKeyDown={(e) => e.key === 'Enter' && submitMirrorReflectionQuery()}
+                          className="mirror-chat-input"
+                          style={{
+                            flex: 1,
+                            background: 'rgba(255, 255, 255, 0.05)',
+                            border: '1px solid rgba(255, 255, 255, 0.1)',
+                            borderRadius: '12px',
+                            padding: '8px 12px',
+                            color: 'var(--cream)',
+                            fontSize: '12px',
+                            outline: 'none'
+                          }}
+                          disabled={mirrorChatLoading}
+                        />
+                        <button 
+                          className="cta cta-light"
+                          onClick={submitMirrorReflectionQuery}
+                          disabled={mirrorChatLoading || !mirrorChatInput.trim()}
+                          style={{ margin: 0, padding: '8px 16px', borderRadius: '12px', minWidth: '70px', fontSize: '11px' }}
+                        >
+                          {mirrorChatLoading ? '...' : 'Reflect'}
+                        </button>
+                      </div>
+
+                      <button className="cta cta-light" style={{ marginTop: '16px', width: '100%' }} onClick={() => { setShowReflection(false); setTtsPlaying(false); if (audioRef.current) audioRef.current.pause(); }}>
                         Step back
                       </button>
                     </div>

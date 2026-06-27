@@ -217,3 +217,77 @@ def generate_weekly_observations(journals: list, chats: list) -> list:
     except Exception as e:
         logger.error(f"Gemini API error during Mirror observation generation: {e}")
         return []
+
+
+def generate_mirror_reflection_update(user_message: str, current_reflection: str, current_ideal: str, attachment_style: str) -> dict:
+    """
+    Generates an updated reflection, ideal self reflection, and insight based on user's direct conversation with the mirror.
+    """
+    if not use_real_gemini:
+        return {
+            "overall_reflection": f"Your mirror reflection has adjusted: {current_reflection} (Attuned to: '{user_message}')",
+            "ideal_reflection": f"Your ideal self has evolved: {current_ideal} (Now centering on: '{user_message}')",
+            "attachment_style": attachment_style,
+            "insight": f"Direct attunement: {user_message[:30]}..."
+        }
+
+    try:
+        prompt = f"""
+        You are the Looking Glass, a mirror of the user's psyche and attachment style.
+        The user is talking directly to their mirror reflection.
+        
+        Current Reflection of the User:
+        "{current_reflection}"
+        
+        Current Ideal Reflection (Vision of growth/security):
+        "{current_ideal}"
+        
+        User's Attachment Style:
+        {attachment_style}
+        
+        User's Message to the Mirror:
+        "{user_message}"
+        
+        Task:
+        1. Formulate an updated Overall Reflection that incorporates their new insight/message, showing how their current self-pattern is shifting.
+        2. Formulate an updated Ideal Self Reflection that reflects a secure, integrated state aligned with their aspirations in their message.
+        3. Formulate a 1-sentence Timeline Insight summarizing this moment of interaction.
+        4. Detect if their attachment style has shifted (or keep it similar/refined).
+        
+        Return your response in JSON format matching this schema:
+        {{
+            "overall_reflection": "string",
+            "ideal_reflection": "string",
+            "attachment_style": "string",
+            "insight": "string"
+        }}
+        """
+
+        response = client.models.generate_content(
+            model='gemini-2.5-flash',
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json",
+                response_schema=types.Schema(
+                    type=types.Type.OBJECT,
+                    properties={
+                        "overall_reflection": types.Schema(type=types.Type.STRING),
+                        "ideal_reflection": types.Schema(type=types.Type.STRING),
+                        "attachment_style": types.Schema(type=types.Type.STRING),
+                        "insight": types.Schema(type=types.Type.STRING),
+                    },
+                    required=["overall_reflection", "ideal_reflection", "attachment_style", "insight"]
+                )
+            )
+        )
+        
+        return json.loads(response.text)
+    except Exception as e:
+        logger.error(f"Failed to generate mirror update: {e}")
+        return {
+            "overall_reflection": f"{current_reflection} (attuned: {user_message})",
+            "ideal_reflection": f"{current_ideal} (attuned: {user_message})",
+            "attachment_style": attachment_style,
+            "insight": f"Attuned: {user_message[:30]}"
+        }
+
