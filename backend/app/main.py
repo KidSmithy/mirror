@@ -297,7 +297,9 @@ def update_attachment_map_counts(user_id: str, tags: List[str]):
         logger.error(f"Failed to update attachment map metrics: {e}")
 
 # Serve static files and fallback to index.html for SPA routing
-frontend_dist_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "frontend", "dist"))
+local_dist_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "frontend", "dist"))
+container_dist_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "frontend", "dist"))
+frontend_dist_path = container_dist_path if os.path.exists(container_dist_path) else local_dist_path
 
 # Mount assets folder
 assets_path = os.path.join(frontend_dist_path, "assets")
