@@ -1,17 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { 
-  Home, 
-  BookOpen, 
-  MessageSquare, 
-  Compass, 
-  ChevronLeft, 
-  ChevronRight, 
   Mic, 
   Send, 
   RefreshCw, 
   Sparkles, 
-  Flame,
   CheckCircle2
 } from 'lucide-react';
 
@@ -29,7 +22,7 @@ const TEST_USERS = [
 export default function App() {
   // Developer user switcher state
   const [currentUser, setCurrentUser] = useState(TEST_USERS[0]);
-  const [screen, setScreen] = useState('home'); // 'home' | 'journal' | 'chat' | 'mirror' | 'map'
+  const [screen, setScreen] = useState('welcome'); // 'welcome' | 'onboard' | 'reveal' | 'home' | 'journal' | 'chat' | 'mirror' | 'map'
   
   // Data states
   const [journals, setJournals] = useState([]);
@@ -39,6 +32,9 @@ export default function App() {
   
   // Interactive UI states
   const [loading, setLoading] = useState(false);
+  const [onboardInput, setOnboardInput] = useState(
+    "It was last March. I was driving home and I almost called my brother — I had my thumb on his name — but I imagined his voice already, tired, and I just put the phone down."
+  );
   const [journalInput, setJournalInput] = useState('');
   const [isRecording, setIsRecording] = useState(false);
   const [recordTime, setRecordTime] = useState(0);
@@ -48,10 +44,12 @@ export default function App() {
   const [isTyping, setIsTyping] = useState(false);
   
   // Mirror Session specific states
+  const [mirrorSubScreen, setMirrorSubScreen] = useState('intro'); // 'intro' | 'observation' | 'integration'
   const [obsIndex, setObsIndex] = useState(0); // 0, 1, or 2 (complete)
   const [mirrorStatus, setMirrorStatus] = useState('idle'); // 'idle' | 'analyzing' | 'finished'
 
   const chatEndRef = useRef(null);
+  const chatBodyRef = useRef(null);
   const recordingTimer = useRef(null);
 
   // Load user data whenever current user changes
@@ -98,6 +96,7 @@ export default function App() {
       setIsRecording(false);
       setSavedJournalTags([]);
       setChatInput('');
+      setScreen('home'); // Send to home on user switch
     }
   };
 
@@ -118,7 +117,7 @@ export default function App() {
   };
 
   const saveJournal = async () => {
-    if (!journalInput.trim()) return;
+    if (!journalInput.trim() && !isRecording) return;
     setLoading(true);
     const headers = { 'x-user-id': currentUser.id };
     try {
@@ -182,6 +181,7 @@ export default function App() {
       const res = await axios.post(`${API_BASE}/observations/generate`, {}, { headers });
       setObservations(res.data);
       setObsIndex(0);
+      setMirrorSubScreen('intro');
       setMirrorStatus('finished');
     } catch (err) {
       console.error("Error running Mirror pipeline:", err);
@@ -197,28 +197,94 @@ export default function App() {
       setObservations(prev => prev.map(o => o.id === obsId ? res.data : o));
       // Move to next slide after a short delay
       setTimeout(() => {
-        setObsIndex(prev => prev + 1);
+        if (obsIndex + 1 >= observations.length) {
+          setMirrorSubScreen('integration');
+        } else {
+          setObsIndex(prev => prev + 1);
+        }
       }, 500);
     } catch (err) {
       console.error("Error submitting feedback:", err);
     }
   };
 
+  const getPatternDescription = (pattern) => {
+    if (pattern.includes('Anxious')) {
+      return "You stay close. You over-tend. You're often the one who notices the silence before anyone else does.";
+    } else if (pattern.includes('Avoidant') || pattern.includes('Disorganized')) {
+      return "You keep your distance. You self-soothe. You're often the one who notices the pressure before anyone else does.";
+    } else {
+      return "You balance closeness and autonomy. You communicate clearly. You feel grounded in relationships.";
+    }
+  };
+
+  const getPatternQuote = (pattern) => {
+    if (pattern.includes('Anxious')) {
+      return `"You used the word 'almost' six times. We can come back to that."`;
+    } else if (pattern.includes('Avoidant')) {
+      return `"You wrote about projects eleven times, but people only twice. Protection has many shapes."`;
+    } else {
+      return `"A steady pulse. There is space in your stories for both yourself and the other."`;
+    }
+  };
+
+  const renderTabBar = () => (
+    <div className="tab-bar">
+      <button 
+        className={`tab ${screen === 'home' ? 'on' : ''}`}
+        onClick={() => setScreen('home')}
+      >
+        <svg viewBox="0 0 24 24"><path d="M3 12L12 4l9 8M5 10v10h14V10"/></svg>
+        Home
+      </button>
+      <button 
+        className={`tab ${screen === 'journal' ? 'on' : ''}`}
+        onClick={() => { setScreen('journal'); setSavedJournalTags([]); }}
+      >
+        <svg viewBox="0 0 24 24"><path d="M6 3h12a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V5a2 2 0 012-2zM10 8h4M10 12h4M10 16h2"/></svg>
+        Journal
+      </button>
+      <button 
+        className={`tab ${screen === 'chat' ? 'on' : ''}`}
+        onClick={() => setScreen('chat')}
+      >
+        <svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 119 9H4l3-3a9 9 0 01-4-6z"/></svg>
+        Chat
+      </button>
+      <button 
+        className={`tab ${screen === 'mirror' ? 'on' : ''}`}
+        onClick={() => { setScreen('mirror'); setMirrorSubScreen('intro'); }}
+      >
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>
+        Mirror
+      </button>
+      <button 
+        className={`tab ${screen === 'map' ? 'on' : ''}`}
+        onClick={() => setScreen('map')}
+      >
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 010 18M12 3a14 14 0 000 18"/></svg>
+        Map
+      </button>
+    </div>
+  );
+
+  // Determine if the current screen requires dark styling
+  const isDarkScreen = ['welcome', 'onboard', 'reveal'].includes(screen) === false && 
+                       (screen === 'mirror' && (mirrorSubScreen === 'intro' || mirrorSubScreen === 'observation' || mirrorSubScreen === 'integration'));
+
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-[#FAF9F6] text-[#1C1C1E] p-4 select-none relative font-sans">
-      
-      {/* Dev Switcher Header */}
-      <div className="w-full max-w-[390px] mb-4 bg-white border border-[#E5E5EA] rounded-2xl p-3 flex items-center justify-between shadow-sm z-50">
+    <>
+      {/* Sleek developer account switcher */}
+      <div className="dev-switcher">
         <div className="flex flex-col">
-          <span className="text-[10px] uppercase tracking-wider text-[#767680] font-semibold flex items-center gap-1">
-            Developer Account Selector
+          <span className="text-[9px] uppercase tracking-wider text-white/50 font-bold">
+            Developer Selector
           </span>
-          <span className="text-xs text-[#B2904C] font-semibold">{currentUser.pattern}</span>
+          <span className="text-xs text-[#E8B89A] font-semibold">{currentUser.pattern}</span>
         </div>
         <select 
           value={currentUser.id} 
           onChange={handleUserChange}
-          className="text-xs font-medium border border-[#E5E5EA] rounded-lg p-2 bg-[#FAF9F6] text-[#1C1C1E] focus:outline-none focus:border-[#B2904C]"
         >
           {TEST_USERS.map(u => (
             <option key={u.id} value={u.id}>{u.name} ({u.pattern})</option>
@@ -226,307 +292,352 @@ export default function App() {
         </select>
       </div>
 
-      {/* Main phone frame container */}
-      <div className="relative w-[375px] h-[780px] bg-black rounded-[50px] p-[10px] shadow-2xl flex flex-col items-center justify-center border-4 border-[#1C1C1E]">
-        <div className="absolute top-[20px] left-1/2 transform -translate-x-1/2 w-[110px] h-[26px] bg-black rounded-[14px] z-50"></div>
-        
-        {/* Screen container */}
-        <div className="w-full h-full bg-[#FAF9F6] rounded-[42px] overflow-hidden flex flex-col relative border border-[#E5E5EA]">
-          
-          {/* Status Bar */}
-          <div className="h-[46px] w-full px-6 flex justify-between items-end pb-1 text-xs font-semibold text-[#1C1C1E] z-30">
-            <span>9:41</span>
-            <div className="flex items-center gap-1.5">
-              {/* Battery / connection SVGs */}
-              <svg className="w-4 h-3.5" viewBox="0 0 16 12" fill="currentColor">
-                <path d="M1 11h2V7H1v4zm4 0h2V4H5v7zm4 0h2V1H9v10zm4 0h2V8h-2v3z"/>
-              </svg>
-              <span>100%</span>
+      <div className="stage">
+        {/* Brand bar above the phone */}
+        <div className="brand-bar">
+          <span className="brand-dot"></span>
+          <span className="brand-name">Mirror</span>
+          <span className="brand-tag">AI for self-inquiry · Built on Gemini</span>
+        </div>
+
+        {/* High-fidelity Phone Frame */}
+        <div className="phone">
+          <div className={`screen ${isDarkScreen ? 'dark' : ''}`}>
+            <div className="notch"></div>
+
+            {/* Status Bar */}
+            <div className="status">
+              <span>9:41</span>
+              <div className="right">
+                <svg viewBox="0 0 16 12" fill="currentColor">
+                  <path d="M1 11h2V7H1v4zm4 0h2V4H5v7zm4 0h2V1H9v10zm4 0h2V8h-2v3z"/>
+                </svg>
+                <span>100</span>
+              </div>
             </div>
-          </div>
 
-          {/* Screen Content loader */}
-          <div className="flex-1 flex flex-col overflow-y-auto px-6 pb-20 pt-2 animate-fade-in">
-            {screen === 'home' && (
-              <div className="flex flex-col gap-6">
-                <div>
-                  <span className="text-[10px] tracking-[0.2em] uppercase text-[#767680] font-bold">
-                    {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
-                  </span>
-                  <h1 className="font-serif text-[42px] leading-tight text-[#1C1C1E] mt-1 font-light">
-                    Good evening,<br/>
-                    <em className="italic text-[#B2904C]">{currentUser.name}</em>.
-                  </h1>
-                </div>
-
-                {/* Daily journal prompt card */}
-                <div 
-                  onClick={() => { setScreen('journal'); setSavedJournalTags([]); }} 
-                  className="bg-white border border-[#E5E5EA] rounded-3xl p-5 shadow-sm hover:scale-[0.99] active:scale-[0.98] transition-transform cursor-pointer relative overflow-hidden group"
-                >
-                  <div className="absolute right-[-10px] top-[-10px] w-20 h-20 rounded-full bg-[#B2904C]/5 group-hover:scale-110 transition-transform"></div>
-                  <span className="text-[10px] tracking-wider uppercase text-[#767680] font-semibold">Today</span>
-                  <h3 className="font-serif text-2xl font-light text-[#1C1C1E] mt-1.5">
-                    Write to <em className="italic">yourself</em>
-                  </h3>
-                  <div className="flex justify-between items-center mt-5 text-[11px] text-[#767680]">
-                    <span>2 min · Journal</span>
-                    <span className="text-[#B2904C] font-semibold">→</span>
-                  </div>
-                </div>
-
-                {/* Mirror session card */}
-                <div 
-                  onClick={() => setScreen('mirror')} 
-                  className="bg-white border border-[#E5E5EA] rounded-3xl p-5 shadow-sm hover:scale-[0.99] active:scale-[0.98] transition-transform cursor-pointer relative overflow-hidden group"
-                >
-                  <div className="absolute right-[-10px] top-[-10px] w-20 h-20 rounded-full bg-[#635A94]/5 group-hover:scale-110 transition-transform"></div>
-                  <span className="text-[10px] tracking-wider uppercase text-[#767680] font-semibold">Weekly</span>
-                  <h3 className="font-serif text-2xl font-light text-[#1C1C1E] mt-1.5">
-                    Your <em className="italic text-[#635A94]">Mirror Session</em>
-                  </h3>
-                  <div className="flex justify-between items-center mt-5 text-[11px] text-[#767680]">
-                    <span>{observations.length > 0 ? `${observations.length} Observations ready` : "Needs analysis"}</span>
-                    <span className="text-[#635A94] font-semibold">→</span>
-                  </div>
-                </div>
-
-                {/* History Snippets */}
-                <div className="mt-2">
-                  <h4 className="text-[10px] tracking-wider uppercase text-[#767680] font-bold mb-3">Recent Writings</h4>
-                  {journals.length === 0 ? (
-                    <p className="text-xs text-[#767680] italic">Your journal entries will show up here.</p>
-                  ) : (
-                    <div className="flex flex-col divide-y divide-[#E5E5EA]">
-                      {journals.slice(0, 3).map(j => (
-                        <div key={j.id} className="py-3 flex justify-between items-baseline gap-4">
-                          <span className="font-serif italic text-sm text-[#767680] shrink-0">
-                            {new Date(j.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                          </span>
-                          <span className="text-xs text-[#1C1C1E] truncate max-w-[200px] text-right">
-                            {j.content}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+            {/* Screens routing */}
+            
+            {/* 1. WELCOME */}
+            {screen === 'welcome' && (
+              <div className="screen-content active">
+                <div className="welcome-body">
+                  <div className="orb-large"></div>
+                  <div className="welcome-title">Begin<br/><em>gently</em>.</div>
+                  <p className="welcome-sub">Mirror learns who you are through stories, not questions.</p>
+                  <button className="cta" onClick={() => setScreen('onboard')}>I'm ready →</button>
+                  <div className="welcome-meta">Takes about 5 minutes</div>
                 </div>
               </div>
             )}
 
-            {screen === 'journal' && (
-              <div className="flex flex-col h-full gap-4">
-                <div>
-                  <span className="text-[10px] tracking-wider uppercase text-[#767680] font-semibold">Journal · Today</span>
-                  <h2 className="font-serif text-3xl font-light text-[#1C1C1E] mt-1">
-                    What's <em className="italic text-[#B2904C]">true</em> right now?
-                  </h2>
-                </div>
-
-                <div className="flex-1 flex flex-col relative bg-white border border-[#E5E5EA] rounded-3xl p-5 shadow-sm min-h-[220px]">
-                  <textarea
-                    value={journalInput}
-                    onChange={(e) => setJournalInput(e.target.value)}
-                    placeholder="Write without filtering. Let thoughts wander..."
-                    className="flex-1 w-full bg-transparent text-sm resize-none text-[#1C1C1E] placeholder-[#767680] focus:outline-none leading-relaxed"
-                  />
-                  
-                  {/* Saved Tags Preview */}
-                  {savedJournalTags.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5 mt-3 pt-3 border-t border-[#E5E5EA] animate-fade-in">
-                      {savedJournalTags.map((tag, i) => (
-                        <span 
-                          key={i} 
-                          className={`text-[9px] font-semibold px-2 py-1 rounded-full ${
-                            tag.includes('auto-tagged') ? 'bg-[#767680]/10 text-[#767680]' : 'bg-[#B2904C]/10 text-[#B2904C]'
-                          }`}
-                        >
-                          {tag}
-                        </span>
-                      ))}
+            {/* 2. ONBOARDING */}
+            {screen === 'onboard' && (
+              <div className="screen-content active">
+                <div className="ob-body">
+                  <div className="ob-step">Question 3 of 5</div>
+                  <div className="ob-progress">
+                    <span className="on"></span><span className="on"></span><span className="on"></span><span></span><span></span>
+                  </div>
+                  <div className="ob-question">Tell me about a time you <em>almost</em> reached out — but didn't.</div>
+                  <div className="ob-field">
+                    <textarea
+                      value={onboardInput}
+                      onChange={(e) => setOnboardInput(e.target.value)}
+                      placeholder="Write without filtering..."
+                    />
+                  </div>
+                  <div className="ob-foot">
+                    <div className="ob-mic">
+                      <div className="ob-mic-dot"></div>
+                      <span>Listening · 0:14</span>
                     </div>
-                  )}
+                    <button className="cta" onClick={() => setScreen('reveal')}>Continue →</button>
+                  </div>
+                </div>
+              </div>
+            )}
 
-                  {/* Recording overlay indicator */}
-                  {isRecording && (
-                    <div className="absolute inset-0 bg-white/95 rounded-3xl flex flex-col items-center justify-center animate-fade-in">
-                      <div className="w-12 h-12 rounded-full bg-[#B2904C]/10 flex items-center justify-center text-[#B2904C] animate-pulse">
-                        <Mic size={22} className="animate-float" />
+            {/* 3. REVEAL */}
+            {screen === 'reveal' && (
+              <div className="screen-content active">
+                <div className="result-body">
+                  <div className="result-eye">Your pattern</div>
+                  <div className="result-title">
+                    {currentUser.pattern.replace('-leaning', '')}
+                    {currentUser.pattern.includes('-leaning') ? (
+                      <><em>-leaning</em>.</>
+                    ) : (
+                      <>.</>
+                    )}
+                  </div>
+                  <p className="result-desc">{getPatternDescription(currentUser.pattern)}</p>
+                  <div className="result-note">
+                    <div className="result-note-label">A note from the Mirror</div>
+                    <div className="result-note-quote">{getPatternQuote(currentUser.pattern)}</div>
+                  </div>
+                  <div className="result-cta">
+                    <button className="cta" onClick={() => setScreen('home')}>Enter Mirror</button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* 4. HOME */}
+            {screen === 'home' && (
+              <div className="screen-content active">
+                <div className="home-scroll-container">
+                  <div className="home-head">
+                    <div className="home-eye">
+                      {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+                    </div>
+                    <div className="home-greet">
+                      Good evening,<br/><em>{currentUser.name}</em>.
+                    </div>
+                  </div>
+
+                  <div className="home-card" onClick={() => { setScreen('journal'); setSavedJournalTags([]); }}>
+                    <div className="home-card-shape"></div>
+                    <div className="home-card-label">Today</div>
+                    <div className="home-card-title">Write to <em>yourself</em></div>
+                    <div className="home-card-meta"><span>2 min · Journal</span><span>→</span></div>
+                  </div>
+
+                  <div className="home-card mirror-c" onClick={() => { setScreen('mirror'); setMirrorSubScreen('intro'); }}>
+                    <div className="home-card-shape"></div>
+                    <div className="home-card-label">Ready now</div>
+                    <div className="home-card-title">Your <em>Mirror Session</em></div>
+                    <div className="home-card-meta">
+                      <span>{observations.length > 0 ? `The Mirror has ${observations.length} notes` : 'Mirror Session'}</span>
+                      <span>→</span>
+                    </div>
+                  </div>
+
+                  <div className="home-list">
+                    {journals.length === 0 ? (
+                      <div className="home-list-row">
+                        <div className="day">Today</div>
+                        <div className="snippet" style={{ fontStyle: 'italic', opacity: 0.6 }}>No entries yet</div>
                       </div>
-                      <span className="text-xs text-[#1C1C1E] font-medium mt-3">Listening to your voice...</span>
-                      <span className="text-[10px] text-[#767680] font-mono mt-1">
-                        0:{recordTime < 10 ? `0${recordTime}` : recordTime}
-                      </span>
-                    </div>
-                  )}
+                    ) : (
+                      journals.slice(0, 3).map((j, i) => {
+                        const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                        const dayName = days[new Date(j.created_at).getDay()];
+                        return (
+                          <div className="home-list-row" key={j.id || i}>
+                            <div className="day">{dayName}</div>
+                            <div className="snippet">{j.content}</div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
                 </div>
+                {renderTabBar()}
+              </div>
+            )}
 
-                <div className="flex gap-3 mt-auto pb-4">
+            {/* 5. JOURNAL */}
+            {screen === 'journal' && (
+              <div className="screen-content active">
+                <div className="journal-head">
+                  <div className="home-eye">Journal · Today</div>
+                  <div className="journal-prompt">What's <em>true</em> right now?</div>
+                </div>
+                <div className="journal-body">
+                  {isRecording ? (
+                    <div className="ob-field animate-fade-in" style={{ minHeight: 'auto', flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                      <div className="ob-mic">
+                        <div className="ob-mic-dot"></div>
+                        <span>Listening · 0:{recordTime < 10 ? `0${recordTime}` : recordTime}</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <textarea
+                      className="journal-text"
+                      value={journalInput}
+                      onChange={(e) => setJournalInput(e.target.value)}
+                      placeholder="Write without filtering. Let thoughts wander..."
+                    />
+                  )}
+                  
+                  <div className="journal-tags">
+                    {savedJournalTags.map((tag, idx) => (
+                      <div 
+                        key={idx}
+                        className={`journal-tag ${tag.includes('auto-tagged') ? 'secondary' : 'primary'}`}
+                        style={{ opacity: 1, animation: 'none' }}
+                      >
+                        {tag}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="journal-foot">
                   <button 
+                    className="cta" 
                     onClick={saveJournal}
                     disabled={!journalInput.trim() && !isRecording}
-                    className="flex-1 bg-[#1C1C1E] text-white py-3.5 rounded-full font-medium text-xs hover:bg-[#2E2E30] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                   >
                     Save & reflect
                   </button>
                   <button 
+                    className="journal-voice" 
                     onClick={toggleRecording}
-                    className={`w-12 h-12 rounded-full flex items-center justify-center text-white transition-all ${
-                      isRecording ? 'bg-[#1C1C1E] scale-95' : 'bg-[#B2904C]'
-                    }`}
+                    style={{
+                      backgroundColor: isRecording ? 'var(--ink)' : 'var(--terra)',
+                      transform: isRecording ? 'scale(0.95)' : 'none'
+                    }}
                   >
-                    {isRecording ? <span className="font-bold text-xs">■</span> : <Mic size={18} />}
+                    {isRecording ? '■' : '●'}
                   </button>
                 </div>
+                {renderTabBar()}
               </div>
             )}
 
+            {/* 6. CHAT */}
             {screen === 'chat' && (
-              <div className="flex flex-col h-full relative">
-                {/* Chat Head */}
-                <div className="flex items-center gap-3 border-b border-[#E5E5EA] pb-3 mb-3">
-                  <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-[#B2904C]/30 to-[#B2904C] flex items-center justify-center font-serif text-[#1C1C1E] text-lg italic">
-                    T
-                  </div>
-                  <div>
-                    <h3 className="font-serif text-base font-semibold leading-tight">The Therapist</h3>
-                    <span className="text-[9px] uppercase tracking-wider text-[#767680] font-bold">Conscious Layer</span>
+              <div className="screen-content active">
+                <div className="chat-head">
+                  <div className="chat-back" onClick={() => setScreen('home')}>←</div>
+                  <div className="chat-avatar"></div>
+                  <div className="chat-name">
+                    The Therapist
+                    <small>Conscious layer</small>
                   </div>
                 </div>
 
-                {/* Chat Feed */}
-                <div className="flex-1 overflow-y-auto pr-1 flex flex-col gap-3 max-h-[420px]">
-                  {chats.map((c) => (
+                <div className="chat-body" ref={chatBodyRef}>
+                  {chats.map((c, i) => (
                     <div 
-                      key={c.id} 
-                      className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-xs leading-relaxed ${
-                        c.sender === 'me' 
-                          ? 'bg-[#1C1C1E] text-white self-end rounded-br-none' 
-                          : 'bg-white border border-[#E5E5EA] text-[#1C1C1E] self-start rounded-bl-none shadow-sm'
-                      }`}
-                    >
-                      {c.message}
-                    </div>
+                      key={c.id || i} 
+                      className={`bubble ${c.sender === 'me' ? 'me' : 'them'}`}
+                      dangerouslySetInnerHTML={{ __html: c.message }}
+                    />
                   ))}
                   {isTyping && (
-                    <div className="bg-white border border-[#E5E5EA] text-[#1C1C1E] self-start rounded-2xl rounded-bl-none shadow-sm px-4 py-3 flex gap-1.5 items-center w-fit animate-fade-in">
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#767680] animate-typing-dot"></span>
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#767680] animate-typing-dot [animation-delay:0.2s]"></span>
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#767680] animate-typing-dot [animation-delay:0.4s]"></span>
+                    <div className="typing animate-fade-in">
+                      <span></span>
+                      <span></span>
+                      <span></span>
                     </div>
                   )}
                   <div ref={chatEndRef} />
                 </div>
 
-                {/* Quick replies & inputs */}
-                <div className="mt-auto pt-3">
+                <div className="chat-input-wrap">
                   {chats.length === 1 && !isTyping && (
-                    <div className="flex gap-2 overflow-x-auto pb-3 scrollbar-none">
+                    <div className="quick-replies">
                       <button 
+                        className="quick-reply" 
                         onClick={() => selectQuickReply("I keep checking if he's online.")}
-                        className="shrink-0 bg-white border border-[#E5E5EA] hover:bg-[#FAF9F6] text-xs px-3.5 py-2 rounded-full text-[#767680] shadow-sm font-medium transition-colors"
                       >
                         "I keep checking if he's online."
                       </button>
                       <button 
+                        className="quick-reply" 
                         onClick={() => selectQuickReply("I feel small.")}
-                        className="shrink-0 bg-white border border-[#E5E5EA] hover:bg-[#FAF9F6] text-xs px-3.5 py-2 rounded-full text-[#767680] shadow-sm font-medium transition-colors"
                       >
                         "I feel small."
                       </button>
+                      <button 
+                        className="quick-reply" 
+                        onClick={() => selectQuickReply("Just tired.")}
+                      >
+                        "Just tired."
+                      </button>
                     </div>
                   )}
-
-                  <div className="flex items-center gap-2 border border-[#E5E5EA] rounded-full bg-white px-4 py-2 shadow-sm">
+                  <div className="chat-input">
                     <input
                       type="text"
                       value={chatInput}
                       onChange={(e) => setChatInput(e.target.value)}
                       onKeyDown={(e) => e.key === 'Enter' && sendChatMessage()}
-                      placeholder="Reply to The Therapist..."
-                      className="flex-1 bg-transparent text-xs text-[#1C1C1E] placeholder-[#767680] focus:outline-none"
+                      placeholder="Reply to The Therapist…"
                     />
                     <button 
+                      className="chat-input-mic"
                       onClick={() => sendChatMessage()}
                       disabled={!chatInput.trim()}
-                      className="text-[#1C1C1E] disabled:opacity-20 transition-opacity"
                     >
-                      <Send size={15} />
+                      {chatInput.trim() ? '→' : '●'}
                     </button>
                   </div>
                 </div>
               </div>
             )}
 
+            {/* 7. MIRROR */}
             {screen === 'mirror' && (
-              <div className="flex flex-col h-full gap-4">
+              <>
                 {observations.length === 0 ? (
-                  <div className="flex-1 flex flex-col items-center justify-center text-center p-4">
-                    <div className="w-24 h-24 rounded-full bg-gradient-to-tr from-[#635A94]/20 via-[#635A94]/40 to-[#B2904C]/20 shadow-md animate-float flex items-center justify-center text-[#635A94]">
-                      <Sparkles size={36} />
+                  <div className="screen-content dark active">
+                    <div className="mirror-intro">
+                      <div className="orb-mirror"></div>
+                      <h3 className="mirror-title">The Mirror is <em>sleeping</em></h3>
+                      <p className="mirror-sub">
+                        Write some journals and chat with the Therapist first. Then prompt the Mirror to inspect your logs.
+                      </p>
+                      <button 
+                        onClick={generateMirrorObservations}
+                        disabled={mirrorStatus === 'analyzing'}
+                        className="cta cta-light flex items-center gap-2 justify-center mx-auto"
+                      >
+                        <RefreshCw size={12} className={mirrorStatus === 'analyzing' ? 'animate-spin' : ''} />
+                        {mirrorStatus === 'analyzing' ? 'Mirror analyzing logs...' : 'Awaken the Mirror'}
+                      </button>
                     </div>
-                    <h3 className="font-serif text-2xl mt-6 text-[#1C1C1E] font-light">The Mirror is sleeping</h3>
-                    <p className="text-xs text-[#767680] mt-2 max-w-[240px] leading-relaxed">
-                      Write some journals and chat with the Therapist first. Then prompt the Unconscious agent to inspect your logs.
-                    </p>
-                    <button 
-                      onClick={generateMirrorObservations}
-                      disabled={mirrorStatus === 'analyzing'}
-                      className="mt-6 bg-[#635A94] text-white px-5 py-3 rounded-full text-xs font-semibold shadow-sm hover:bg-[#524982] transition-colors flex items-center gap-2 disabled:opacity-50"
-                    >
-                      <RefreshCw size={12} className={mirrorStatus === 'analyzing' ? 'animate-spin' : ''} />
-                      {mirrorStatus === 'analyzing' ? 'Mirror analyzing logs...' : 'Awaken the Mirror'}
-                    </button>
+                    {renderTabBar()}
                   </div>
                 ) : (
-                  <div className="flex flex-col h-full gap-3">
-                    {/* Slides page */}
-                    {obsIndex < observations.length ? (
-                      <div className="flex-1 flex flex-col animate-fade-in">
-                        <div>
-                          <span className="text-[10px] tracking-wider uppercase text-[#767680] font-semibold">
-                            Observation {obsIndex + 1} of {observations.length}
-                          </span>
-                          <h2 className="font-serif text-3xl font-light text-[#1C1C1E] mt-1">
-                            On <em className="italic text-[#635A94]">{observations[obsIndex].category}</em>.
-                          </h2>
+                  <>
+                    {/* 7a. MIRROR INTRO */}
+                    {mirrorSubScreen === 'intro' && (
+                      <div className="screen-content dark active">
+                        <div className="mirror-intro">
+                          <div className="orb-mirror"></div>
+                          <div className="mirror-eye">Mirror Session · Week 12</div>
+                          <div className="mirror-title">I noticed<br/><em>some things</em>.</div>
+                          <p className="mirror-sub">Each is something you wrote yourself. I'm only showing it back.</p>
+                          <button className="cta cta-light" onClick={() => {
+                            setMirrorSubScreen('observation');
+                            setObsIndex(0);
+                          }}>Show me</button>
                         </div>
+                        {renderTabBar()}
+                      </div>
+                    )}
 
-                        {/* Progress Bar */}
-                        <div className="flex items-center gap-2 my-4">
-                          <span className="text-[10px] font-mono text-[#767680]">{obsIndex + 1}</span>
-                          <div className="flex-1 h-[2px] bg-[#E5E5EA] rounded-full overflow-hidden">
+                    {/* 7b. OBSERVATION SLIDES */}
+                    {mirrorSubScreen === 'observation' && obsIndex < observations.length && (
+                      <div className="screen-content dark active">
+                        <div className="obs-head">
+                          <div className="mirror-eye">Observation {obsIndex + 1} of {observations.length}</div>
+                          <div className="obs-title">On <em>{observations[obsIndex].category}</em>.</div>
+                        </div>
+                        <div className="obs-progress">
+                          <span>{obsIndex + 1}</span>
+                          <div className="obs-progress-bar">
                             <div 
-                              className="h-full bg-[#635A94] transition-all duration-300"
+                              className="obs-progress-fill" 
                               style={{ width: `${((obsIndex + 1) / observations.length) * 100}%` }}
                             />
                           </div>
-                          <span className="text-[10px] font-mono text-[#767680]">{observations.length}</span>
+                          <span>{observations.length}</span>
                         </div>
-
-                        {/* Card */}
-                        <div className="bg-white border border-[#E5E5EA] rounded-3xl p-5 shadow-sm flex flex-col gap-4 flex-1">
-                          <p className="font-serif italic text-[17px] text-[#1C1C1E] leading-relaxed">
-                            "{observations[obsIndex].quote}"
-                          </p>
-                          <div className="pt-4 border-t border-[#E5E5EA] text-[11px] text-[#767680] leading-relaxed">
-                            <strong className="text-[#635A94] font-medium block mb-1">Unconscious Pattern:</strong>
-                            {observations[obsIndex].evidence}
-                          </div>
-
-                          {/* Multi-choice feedback */}
-                          <div className="mt-auto pt-4 flex gap-2">
+                        <div className="obs-card">
+                          <div className="obs-quote">"{observations[obsIndex].quote}"</div>
+                          <div className="obs-evidence" dangerouslySetInnerHTML={{ __html: observations[obsIndex].evidence }} />
+                          <div className="obs-actions">
                             {['lands', 'not_yet', 'say_more'].map((opt) => {
                               const isSelected = observations[obsIndex].feedback === opt;
                               return (
                                 <button
                                   key={opt}
                                   onClick={() => handleObsFeedback(observations[obsIndex].id, opt)}
-                                  className={`flex-1 py-2 text-[10px] font-semibold rounded-full border transition-all ${
-                                    isSelected 
-                                      ? 'bg-[#635A94] text-white border-[#635A94]'
-                                      : 'bg-white border-[#E5E5EA] hover:bg-[#FAF9F6] text-[#635A94]'
-                                  }`}
+                                  className={`pill ${isSelected ? 'selected' : ''}`}
                                 >
                                   {opt === 'lands' ? 'Lands' : opt === 'not_yet' ? 'Not yet' : 'Say more'}
                                 </button>
@@ -534,105 +645,117 @@ export default function App() {
                             })}
                           </div>
                         </div>
-                      </div>
-                    ) : (
-                      // Complete State
-                      <div className="flex-1 flex flex-col gap-5 justify-center animate-fade-in">
-                        <div className="text-center">
-                          <div className="w-12 h-12 rounded-full bg-green-50 text-green-600 flex items-center justify-center mx-auto mb-3">
-                            <CheckCircle2 size={24} />
-                          </div>
-                          <span className="text-[10px] tracking-wider uppercase text-[#767680] font-bold">Session Complete</span>
-                          <h2 className="font-serif text-3xl font-light text-[#1C1C1E] mt-1">
-                            Sit <em className="italic">with this</em>.
-                          </h2>
-                          <p className="text-xs text-[#767680] mt-1">There is nothing more to do tonight.</p>
-                        </div>
-
-                        {/* Prompt Integration Card */}
-                        <div className="bg-white border border-[#E5E5EA] rounded-3xl p-5 shadow-sm">
-                          <span className="text-[9px] tracking-wider uppercase text-[#B2904C] font-semibold block mb-1.5">Optional · Tomorrow</span>
-                          <p className="font-serif italic text-base text-[#1C1C1E] leading-relaxed">
-                            "Write your mother a letter you'll never send. Use her name."
-                          </p>
-                          <span className="text-[9px] text-[#767680] block mt-4">
-                            Prompt designed by your Therapist, in response to Mirror notes.
-                          </span>
-                        </div>
-
-                        <div className="flex gap-2.5">
-                          <button 
-                            onClick={() => setScreen('map')}
-                            className="flex-1 bg-[#1C1C1E] text-white py-3.5 rounded-full font-medium text-xs hover:bg-[#2E2E30] transition-colors"
-                          >
-                            See attachment Map
-                          </button>
-                          <button 
-                            onClick={generateMirrorObservations}
-                            className="w-12 h-12 border border-[#E5E5EA] hover:bg-[#FAF9F6] bg-white rounded-full flex items-center justify-center text-[#767680] transition-colors shadow-sm"
-                            title="Regenerate Observations"
-                          >
-                            <RefreshCw size={14} />
-                          </button>
-                        </div>
+                        <div style={{ flex: 1 }}></div>
+                        {renderTabBar()}
                       </div>
                     )}
-                  </div>
+
+                    {/* 7c. INTEGRATION / COMPLETE */}
+                    {mirrorSubScreen === 'integration' && (
+                      <div className="screen-content dark active">
+                        <div className="integ-head">
+                          <div className="mirror-eye">Session complete</div>
+                          <div className="obs-title">Sit <em>with this</em>.</div>
+                          <p className="mirror-sub" style={{ marginTop: '8px', marginBottom: 0 }}>There's nothing to do tonight.</p>
+                        </div>
+                        
+                        <div className="integ-card">
+                          <div className="integ-card-label">Optional · Tomorrow</div>
+                          <div className="integ-card-quote">"Write your mother a letter you'll never send. Use her name."</div>
+                          <div className="integ-card-footer">Prompt designed by your Therapist, in response.</div>
+                        </div>
+
+                        <div className="chart-wrap">
+                          <div className="chart-label">Your patterns · 6 weeks</div>
+                          <div className="chart-bars">
+                            {[30, 45, 65, 80, 90, 100].map((h, i) => {
+                              const colors = [
+                                'linear-gradient(180deg, var(--lavender-soft), transparent)',
+                                'linear-gradient(180deg, var(--lavender-soft), transparent)',
+                                'linear-gradient(180deg, var(--lavender-soft), transparent)',
+                                'linear-gradient(180deg, var(--terra-soft), transparent)',
+                                'linear-gradient(180deg, var(--terra-soft), transparent)',
+                                'linear-gradient(180deg, var(--terra-soft), var(--terra))'
+                              ];
+                              return (
+                                <div 
+                                  key={i} 
+                                  className="chart-bar" 
+                                  style={{ 
+                                    background: colors[i], 
+                                    height: `${h}%`,
+                                    animationDelay: `${i * 0.1}s` 
+                                  }}
+                                />
+                              );
+                            })}
+                          </div>
+                          <div className="chart-axis"><span>W7</span><span>W8</span><span>W9</span><span>W10</span><span>W11</span><span>W12</span></div>
+                        </div>
+
+                        <div style={{ flex: 1 }}></div>
+                        <div style={{ padding: '12px 24px 14px' }}>
+                          <button className="cta cta-light" style={{ width: '100%' }} onClick={() => setScreen('map')}>
+                            See your Map →
+                          </button>
+                        </div>
+                        {renderTabBar()}
+                      </div>
+                    )}
+                  </>
                 )}
-              </div>
+              </>
             )}
 
+            {/* 8. MAP */}
             {screen === 'map' && (
-              <div className="flex flex-col h-full gap-4">
-                <div>
-                  <span className="text-[10px] tracking-wider uppercase text-[#767680] font-semibold">June · Month 3</span>
-                  <h2 className="font-serif text-3xl font-light text-[#1C1C1E] mt-1">
-                    Your <em className="italic text-[#B2904C]">attachment</em> landscape.
-                  </h2>
+              <div className="screen-content map-content active">
+                <div className="map-head">
+                  <div className="map-eye">June · Month 3</div>
+                  <div className="map-title">Your <em>attachment</em> landscape.</div>
                 </div>
-
-                {/* Map Canvas Visual */}
-                <div className="h-[200px] w-full border border-[#E5E5EA] rounded-3xl bg-gradient-to-br from-[#FAF6EF] via-[#EFE5D6] to-[#E5DBC5] shadow-inner relative overflow-hidden flex items-center justify-center">
-                  <div className="absolute w-[180px] h-[180px] rounded-full bg-[#B2904C]/5 filter blur-md"></div>
-                  <div className="absolute w-[120px] h-[120px] rounded-full bg-[#635A94]/5 filter blur-md"></div>
-                  
-                  {/* Dynamic scattering dots matching counts */}
+                
+                <div className="map-canvas">
                   {attachmentMap && (
                     <>
-                      {/* Anxious dots (gold) */}
+                      {/* Anxious dots (gold / terra) */}
                       {Array.from({ length: Math.min(attachmentMap.anxious_count, 15) }).map((_, i) => (
                         <span 
                           key={`anx-${i}`} 
-                          className="absolute w-2 h-2 rounded-full bg-[#B2904C] shadow-lg animate-fade-in"
+                          className="map-dot"
                           style={{
                             top: `${20 + (i * 27) % 65}%`,
                             left: `${15 + (i * 41) % 70}%`,
+                            color: 'var(--terra)',
+                            background: 'var(--terra)',
                             animationDelay: `${i * 0.08}s`
                           }}
                         />
                       ))}
-                      {/* Avoidant dots (indigo) */}
+                      {/* Avoidant dots (lavender) */}
                       {Array.from({ length: Math.min(attachmentMap.avoidant_count, 15) }).map((_, i) => (
                         <span 
                           key={`avd-${i}`} 
-                          className="absolute w-2 h-2 rounded-full bg-[#635A94] shadow-lg animate-fade-in"
+                          className="map-dot"
                           style={{
                             top: `${15 + (i * 37) % 75}%`,
                             left: `${20 + (i * 19) % 65}%`,
-                            opacity: 0.8,
+                            color: 'var(--lavender)',
+                            background: 'var(--lavender)',
                             animationDelay: `${i * 0.1}s`
                           }}
                         />
                       ))}
-                      {/* Secure dots (charcoal) */}
+                      {/* Secure dots (ink) */}
                       {Array.from({ length: Math.min(attachmentMap.secure_count, 20) }).map((_, i) => (
                         <span 
                           key={`sec-${i}`} 
-                          className="absolute w-1.5 h-1.5 rounded-full bg-[#1C1C1E] shadow-sm animate-fade-in"
+                          className="map-dot"
                           style={{
                             top: `${30 + (i * 23) % 55}%`,
                             left: `${30 + (i * 33) % 45}%`,
-                            opacity: 0.6,
+                            color: 'var(--ink)',
+                            background: 'var(--ink)',
                             animationDelay: `${i * 0.05}s`
                           }}
                         />
@@ -641,97 +764,32 @@ export default function App() {
                   )}
                 </div>
 
-                {/* Legend list */}
-                {attachmentMap && (
-                  <div className="flex flex-col gap-2.5 bg-white border border-[#E5E5EA] rounded-2xl p-4 shadow-sm">
-                    <div className="flex justify-between items-center text-xs">
-                      <div className="flex items-center gap-2">
-                        <span className="w-2.5 h-2.5 rounded-full bg-[#B2904C]" />
-                        <span className="text-[#1C1C1E] font-medium">Anxious Expressions</span>
-                      </div>
-                      <span className="text-[#767680] font-semibold">{attachmentMap.anxious_count} entries</span>
-                    </div>
-                    <div className="flex justify-between items-center text-xs">
-                      <div className="flex items-center gap-2">
-                        <span className="w-2.5 h-2.5 rounded-full bg-[#635A94]" />
-                        <span className="text-[#1C1C1E] font-medium">Avoidant Expressions</span>
-                      </div>
-                      <span className="text-[#767680] font-semibold">{attachmentMap.avoidant_count} entries</span>
-                    </div>
-                    <div className="flex justify-between items-center text-xs">
-                      <div className="flex items-center gap-2">
-                        <span className="w-2.5 h-2.5 rounded-full bg-[#1C1C1E]" />
-                        <span className="text-[#1C1C1E] font-medium">Secure Integration</span>
-                      </div>
-                      <span className="text-[#767680] font-semibold">{attachmentMap.secure_count} entries</span>
-                    </div>
+                <div className="map-legend">
+                  <div className="map-legend-row">
+                    <span className="legend-dot" style={{ background: 'var(--terra)' }}></span>
+                    Anxious · {attachmentMap ? attachmentMap.anxious_count : 0} entries
                   </div>
-                )}
-
-                <div className="flex gap-3 mt-auto pb-4 text-xs font-semibold">
-                  <button className="flex-1 py-3 bg-white border border-[#E5E5EA] rounded-full text-[#767680] hover:bg-[#FAF9F6] transition-colors shadow-sm">
-                    Compare patterns
-                  </button>
-                  <button className="flex-1 py-3 bg-[#1C1C1E] text-white rounded-full hover:bg-[#2E2E30] transition-colors">
-                    Share map
-                  </button>
+                  <div className="map-legend-row">
+                    <span className="legend-dot" style={{ background: 'var(--lavender)' }}></span>
+                    Avoidant · {attachmentMap ? attachmentMap.avoidant_count : 0} entries
+                  </div>
+                  <div className="map-legend-row">
+                    <span className="legend-dot" style={{ background: 'var(--ink)' }}></span>
+                    Secure · {attachmentMap ? attachmentMap.secure_count : 0} <span className="green-up">↑ from May</span>
+                  </div>
                 </div>
+
+                <div className="map-foot">
+                  <div className="map-btn outline">Compare</div>
+                  <div className="map-btn solid">Share</div>
+                </div>
+                {renderTabBar()}
               </div>
             )}
-          </div>
 
-          {/* Navigation Tab Bar */}
-          <div className="absolute bottom-0 left-0 right-0 h-[74px] border-t border-[#E5E5EA] bg-white/80 backdrop-blur-md flex justify-around items-center px-4 pb-4 pt-1 z-30">
-            <button 
-              onClick={() => setScreen('home')}
-              className={`flex flex-col items-center gap-1 text-[9px] font-semibold ${
-                screen === 'home' ? 'text-[#1C1C1E]' : 'text-[#767680]'
-              }`}
-            >
-              <Home size={18} strokeWidth={screen === 'home' ? 2.5 : 1.8} />
-              Home
-            </button>
-            <button 
-              onClick={() => { setScreen('journal'); setSavedJournalTags([]); }}
-              className={`flex flex-col items-center gap-1 text-[9px] font-semibold ${
-                screen === 'journal' ? 'text-[#1C1C1E]' : 'text-[#767680]'
-              }`}
-            >
-              <BookOpen size={18} strokeWidth={screen === 'journal' ? 2.5 : 1.8} />
-              Journal
-            </button>
-            <button 
-              onClick={() => setScreen('chat')}
-              className={`flex flex-col items-center gap-1 text-[9px] font-semibold ${
-                screen === 'chat' ? 'text-[#1C1C1E]' : 'text-[#767680]'
-              }`}
-            >
-              <MessageSquare size={18} strokeWidth={screen === 'chat' ? 2.5 : 1.8} />
-              Chat
-            </button>
-            <button 
-              onClick={() => setScreen('mirror')}
-              className={`flex flex-col items-center gap-1 text-[9px] font-semibold ${
-                screen === 'mirror' ? 'text-[#1C1C1E]' : 'text-[#767680]'
-              }`}
-            >
-              <Sparkles size={18} strokeWidth={screen === 'mirror' ? 2.5 : 1.8} />
-              Mirror
-            </button>
-            <button 
-              onClick={() => setScreen('map')}
-              className={`flex flex-col items-center gap-1 text-[9px] font-semibold ${
-                screen === 'map' ? 'text-[#1C1C1E]' : 'text-[#767680]'
-              }`}
-            >
-              <Compass size={18} strokeWidth={screen === 'map' ? 2.5 : 1.8} />
-              Map
-            </button>
           </div>
-
         </div>
       </div>
-
-    </div>
+    </>
   );
 }
