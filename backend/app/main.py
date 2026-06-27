@@ -1,3 +1,5 @@
+import os
+import logging
 import uuid
 import io
 import logging
@@ -7,6 +9,8 @@ from typing import List, Optional
 logger = logging.getLogger("mirror-app")
 from fastapi import FastAPI, Header, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 
 from app.config import settings
 from app.db import supabase_client
@@ -14,17 +18,21 @@ from app.models import (
     JournalCreate, JournalResponse,
     ChatCreate, ChatResponse,
     ObservationFeedback, ObservationResponse,
-    AttachmentMapResponse, ProfileResponse, ReflectionResponse
+    AttachmentMapResponse,
+    OnboardingAssess, AssessmentResponse, ProfileResponse, ReflectionResponse
 )
 from app.ai import (
     generate_therapist_response,
     generate_journal_tags,
     generate_weekly_observations,
+    assess_attachment_style,
     generate_mirror_reflection_update,
     client,
     types,
     use_real_gemini
 )
+
+logger = logging.getLogger("mirror")
 
 app = FastAPI(title="Mirror API", version="1.0.0")
 
@@ -307,18 +315,30 @@ def create_journal(journal: JournalCreate, user_id: str = Header(None, alias="x-
         raise HTTPException(status_code=500, detail=f"Database error: {e}")
 
 @app.get("/api/chats", response_model=List[ChatResponse])
-def get_chats(user_id: str = Header(None, alias="x-user-id")):
+def get_chats(topic: str = "general", user_id: str = Header(None, alias="x-user-id")):
     uid = get_current_user_id(user_id)
     try:
-        response = supabase_client.table("chats").select("*").eq("user_id", uid).order("created_at", desc=False).execute()
-        # Seed an initial greeting if chat is completely empty
+        response = supabase_client.table("chats").select("*").eq("user_id", uid).eq("topic", topic).order("created_at", desc=False).execute()
+        # Seed an initial greeting if chat is completely empty for this topic
         if not response.data:
+            greetings = {
+                "general": "What's on your mind tonight?",
+                "anxiety": "What's making your mind race today? Let's slow it down together.",
+                "depression": "However heavy today feels, I'm glad you're here. What's sitting with you?",
+                "trauma": "This is a safe, unhurried space — we'll go only where you choose. What feels okay to share right now?",
+                "grief": "Grief has its own time. Who or what are you holding in your heart today?",
+                "stress": "Let's set everything down for a moment. What's been pulling at you?",
+                "relationship": "How are your connections feeling today? I'm here to explore your relationship dynamics and attachment patterns.",
+                "mental": "Take a breath. What's showing up in your emotional landscape right now?",
+                "family": "Our childhood structures shape our adult self. What patterns from your family are you noticing today?"
+            }
             initial_chat = {
                 "id": str(uuid.uuid4()),
                 "user_id": uid,
                 "created_at": datetime.utcnow().isoformat(),
                 "sender": "them",
-                "message": "What's on your mind tonight?"
+                "message": greetings.get(topic, "What's on your mind tonight?"),
+                "topic": topic
             }
             supabase_client.table("chats").insert(initial_chat).execute()
             return [initial_chat]
@@ -336,18 +356,19 @@ def create_chat(chat: ChatCreate, user_id: str = Header(None, alias="x-user-id")
         "user_id": uid,
         "created_at": datetime.utcnow().isoformat(),
         "sender": "me",
-        "message": chat.message
+        "message": chat.message,
+        "topic": chat.topic
     }
     
     try:
         supabase_client.table("chats").insert(user_message).execute()
         
-        # 2. Retrieve recent chat history to provide context to the Therapist agent
-        history_response = supabase_client.table("chats").select("*").eq("user_id", uid).order("created_at", desc=False).execute()
+        # 2. Retrieve recent chat history for this topic to provide context to the Therapist agent
+        history_response = supabase_client.table("chats").select("*").eq("user_id", uid).eq("topic", chat.topic).order("created_at", desc=False).execute()
         chat_history = history_response.data
         
         # 3. Call Gemini to generate the Socratic Therapist response
-        therapist_reply_text = generate_therapist_response(chat_history)
+        therapist_reply_text = generate_therapist_response(chat_history, topic=chat.topic)
         
         # 4. Save Therapist's message to database
         therapist_message = {
@@ -355,7 +376,8 @@ def create_chat(chat: ChatCreate, user_id: str = Header(None, alias="x-user-id")
             "user_id": uid,
             "created_at": datetime.utcnow().isoformat(),
             "sender": "them",
-            "message": therapist_reply_text
+            "message": therapist_reply_text,
+            "topic": chat.topic
         }
         response = supabase_client.table("chats").insert(therapist_message).execute()
         
@@ -433,6 +455,19 @@ def generate_mirror_observations(user_id: str = Header(None, alias="x-user-id"))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Mirror pipeline failed: {e}")
 
+@app.post("/api/onboarding/assess", response_model=AssessmentResponse)
+def assess_onboarding(payload: OnboardingAssess, user_id: str = Header(None, alias="x-user-id")):
+    """
+    Onboarding assessor: infers the user's attachment style from their free-text
+    scenario answers via the assessment agent.
+    """
+    if not payload.answers or not any(a and a.strip() for a in payload.answers):
+        raise HTTPException(status_code=400, detail="No answers provided to assess.")
+    try:
+        return assess_attachment_style(payload.answers)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Assessment failed: {e}")
+
 @app.get("/api/attachment-map", response_model=AttachmentMapResponse)
 def get_attachment_map(user_id: str = Header(None, alias="x-user-id")):
     uid = get_current_user_id(user_id)
@@ -493,3 +528,27 @@ def update_attachment_map_counts(user_id: str, tags: List[str]):
         }).eq("user_id", user_id).execute()
     except Exception as e:
         logger.error(f"Failed to update attachment map metrics: {e}")
+
+# Serve static files and fallback to index.html for SPA routing
+local_dist_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "frontend", "dist"))
+container_dist_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "frontend", "dist"))
+frontend_dist_path = container_dist_path if os.path.exists(container_dist_path) else local_dist_path
+
+# Mount assets folder
+assets_path = os.path.join(frontend_dist_path, "assets")
+if os.path.exists(assets_path):
+    app.mount("/assets", StaticFiles(directory=assets_path), name="assets")
+
+# Catch-all route to serve SPA frontend
+@app.get("/{catchall:path}")
+def serve_spa(catchall: str):
+    if "." in catchall and not catchall.endswith(".html"):
+        file_path = os.path.join(frontend_dist_path, catchall)
+        if os.path.exists(file_path):
+            return FileResponse(file_path)
+            
+    index_file = os.path.join(frontend_dist_path, "index.html")
+    if os.path.exists(index_file):
+        return FileResponse(index_file)
+    return {"error": "Frontend build not found"}
+

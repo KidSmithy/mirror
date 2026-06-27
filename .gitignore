@@ -33,3 +33,6 @@ backend/app/__pycache__/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Local Claude Code config
+.claude/

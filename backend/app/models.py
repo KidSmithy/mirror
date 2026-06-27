@@ -16,6 +16,7 @@ class JournalResponse(BaseModel):
 
 class ChatCreate(BaseModel):
     message: str
+    topic: str = "general"
 
 class ChatResponse(BaseModel):
     id: str
@@ -23,6 +24,7 @@ class ChatResponse(BaseModel):
     created_at: datetime
     sender: str
     message: str
+    topic: str = "general"
 
 class ObservationFeedback(BaseModel):
     feedback: str # 'lands', 'not_yet', 'say_more'
@@ -43,6 +45,17 @@ class AttachmentMapResponse(BaseModel):
     anxious_count: int
     avoidant_count: int
     secure_count: int
+
+class OnboardingAssess(BaseModel):
+    answers: List[str]
+
+class AssessmentResponse(BaseModel):
+    primary_style: str
+    secondary_style: Optional[str] = None
+    pattern_name: str
+    description: str
+    quote: str
+    triggers: List[str] = []
 
 class ProfileResponse(BaseModel):
     id: str

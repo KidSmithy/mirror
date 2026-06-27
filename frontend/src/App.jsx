@@ -8,7 +8,9 @@ import {
   CheckCircle2
 } from 'lucide-react';
 
-const API_BASE = 'http://127.0.0.1:8000/api';
+const API_BASE = import.meta.env.DEV 
+  ? 'http://127.0.0.1:8000/api' 
+  : '/api';
 
 // List of test users matching backend/test_users.md
 const TEST_USERS = [
@@ -17,6 +19,62 @@ const TEST_USERS = [
   { name: 'Taylor', id: 'a3c0d1e2-3456-7890-cdef-0123456789ab', pattern: 'Secure' },
   { name: 'Jordan', id: 'b4d1e2f3-4567-8901-def0-123456789abc', pattern: 'Disorganized' },
   { name: 'Morgan', id: 'c5e2f3a4-5678-9012-ef01-23456789abcd', pattern: 'Anxious-leaning' }
+];
+
+// Scenario-based onboarding questions. Answers are sent to the assessor agent.
+const ONBOARD_QUESTIONS = [
+  {
+    q: "Your partner takes hours to reply to a casual text. What happens first in you?",
+    options: [
+      { label: "I start checking my phone and worry I said something wrong.", style: "Anxious" },
+      { label: "I shrug and give it space — I've got my own things going on.", style: "Avoidant" },
+      { label: "I assume they got caught up; we can talk later, it's okay.", style: "Secure" },
+      { label: "I feel anxious, then tell myself I don't need anyone and pull away.", style: "Disorganized" },
+    ],
+  },
+  {
+    q: "When a relationship starts getting really close, you notice…",
+    options: [
+      { label: "I want constant reassurance and worry it could slip away.", style: "Anxious" },
+      { label: "an urge to keep some distance and protect my space.", style: "Avoidant" },
+      { label: "I feel comfortable and trust where it's going.", style: "Secure" },
+      { label: "I crave being close but also feel the pull to withdraw.", style: "Disorganized" },
+    ],
+  },
+  {
+    q: "After a fight with someone you love, you usually…",
+    options: [
+      { label: "replay it and overthink every word, waiting for them to reach out.", style: "Anxious" },
+      { label: "go quiet and shut down until I've cooled off alone.", style: "Avoidant" },
+      { label: "want to talk it through honestly once we're both calm.", style: "Secure" },
+      { label: "reach out, then pull away the moment it feels too close.", style: "Disorganized" },
+    ],
+  },
+  {
+    q: "There was a time you almost reached out — but didn't. Why?",
+    options: [
+      { label: "I worried I'd seem too needy or be a bother.", style: "Anxious" },
+      { label: "I was tired and figured I'd just handle it myself.", style: "Avoidant" },
+      { label: "Honestly I did reach out — I'd rather just communicate.", style: "Secure" },
+      { label: "I almost called, then put the phone down at the last second.", style: "Disorganized" },
+    ],
+  },
+  {
+    q: "The story you catch yourself telling about why closeness is hard:",
+    options: [
+      { label: "I overthink that people will drift away if I'm not careful.", style: "Anxious" },
+      { label: "I'm better off alone; depending on people feels unsafe, so I keep my independence.", style: "Avoidant" },
+      { label: "Closeness isn't always easy, but I trust it's worth it.", style: "Secure" },
+      { label: "I want to be close and need space at the very same time.", style: "Disorganized" },
+    ],
+  },
+];
+
+const QUICK_REPLIES = [
+  "I'm not sure, honestly.",
+  "Tell me more.",
+  "That's hard to sit with.",
+  "I keep avoiding it.",
 ];
 
 export default function App() {
@@ -43,9 +101,16 @@ export default function App() {
   
   // Interactive UI states
   const [loading, setLoading] = useState(false);
-  const [onboardInput, setOnboardInput] = useState(
-    "It was last March. I was driving home and I almost called my brother — I had my thumb on his name — but I imagined his voice already, tired, and I just put the phone down."
-  );
+  const [saveStatus, setSaveStatus] = useState(null); // null | 'saving' | 'success' | 'error'
+  const [onboardChoice, setOnboardChoice] = useState(null);
+  const [onboardCustom, setOnboardCustom] = useState('');
+  const [onboardListening, setOnboardListening] = useState(false);
+  const [activeTopic, setActiveTopic] = useState('general'); // 'general' | 'relationship' | 'mental' | 'family'
+  const [onboardStep, setOnboardStep] = useState(0);
+  const [onboardAnswers, setOnboardAnswers] = useState([]);
+  const recognitionRef = useRef(null);
+  const [assessment, setAssessment] = useState(null);
+  const [assessing, setAssessing] = useState(false);
   const [journalInput, setJournalInput] = useState('');
   const [isRecording, setIsRecording] = useState(false);
   const [recordTime, setRecordTime] = useState(0);
@@ -81,7 +146,7 @@ export default function App() {
     try {
       const [journalRes, chatRes, obsRes, mapRes, profileRes, reflectionsRes] = await Promise.all([
         axios.get(`${API_BASE}/journals`, { headers }),
-        axios.get(`${API_BASE}/chats`, { headers }),
+        axios.get(`${API_BASE}/chats?topic=general`, { headers }),
         axios.get(`${API_BASE}/observations`, { headers }),
         axios.get(`${API_BASE}/attachment-map`, { headers }),
         axios.get(`${API_BASE}/profile`, { headers }).catch(() => ({ data: null })),
@@ -111,6 +176,7 @@ export default function App() {
       setIsRecording(false);
       setSavedJournalTags([]);
       setChatInput('');
+      setActiveTopic('general');
       setScreen('home'); // Send to home on user switch
     }
   };
@@ -133,6 +199,7 @@ export default function App() {
 
   const saveJournal = async () => {
     if (!journalInput.trim() && !isRecording) return;
+    setSaveStatus('saving');
     setLoading(true);
     const headers = { 'x-user-id': currentUser.id };
     try {
@@ -148,8 +215,26 @@ export default function App() {
       // Update attachment counts locally
       const mapRes = await axios.get(`${API_BASE}/attachment-map`, { headers });
       setAttachmentMap(mapRes.data);
+      setSaveStatus('success');
+      setTimeout(() => setSaveStatus(null), 2500);
     } catch (err) {
       console.error("Error saving journal:", err);
+      setSaveStatus('error');
+      setTimeout(() => setSaveStatus(null), 3000);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const changeTopic = async (topic) => {
+    setActiveTopic(topic);
+    setLoading(true);
+    const headers = { 'x-user-id': currentUser.id };
+    try {
+      const res = await axios.get(`${API_BASE}/chats?topic=${topic}`, { headers });
+      setChats(res.data);
+    } catch (err) {
+      console.error("Error changing topic:", err);
     } finally {
       setLoading(false);
     }
@@ -169,13 +254,14 @@ export default function App() {
       user_id: currentUser.id,
       created_at: new Date().toISOString(),
       sender: 'me',
-      message: message
+      message: message,
+      topic: activeTopic
     };
     setChats(prev => [...prev, userMsg]);
     setIsTyping(true);
 
     try {
-      const res = await axios.post(`${API_BASE}/chats`, { message }, { headers });
+      const res = await axios.post(`${API_BASE}/chats`, { message, topic: activeTopic }, { headers });
       setChats(prev => [...prev, res.data]);
     } catch (err) {
       console.error("Error sending message:", err);
@@ -186,6 +272,89 @@ export default function App() {
 
   const selectQuickReply = (replyText) => {
     sendChatMessage(replyText);
+  };
+
+  // --- ONBOARDING LOGIC ---
+  const stopDictation = () => {
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
+      recognitionRef.current = null;
+    }
+    setOnboardListening(false);
+  };
+
+  const toggleDictation = () => {
+    if (onboardListening) {
+      stopDictation();
+      return;
+    }
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert("Voice input isn't supported in this browser — try typing instead.");
+      return;
+    }
+    const rec = new SpeechRecognition();
+    rec.lang = 'en-US';
+    rec.interimResults = true;
+    rec.continuous = true;
+    let finalText = onboardCustom ? onboardCustom + ' ' : '';
+    rec.onresult = (e) => {
+      let interim = '';
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const t = e.results[i][0].transcript;
+        if (e.results[i].isFinal) finalText += t;
+        else interim += t;
+      }
+      setOnboardChoice(null);
+      setOnboardCustom((finalText + interim).trimStart());
+    };
+    rec.onerror = () => stopDictation();
+    rec.onend = () => setOnboardListening(false);
+    recognitionRef.current = rec;
+    rec.start();
+    setOnboardListening(true);
+  };
+
+  const startOnboarding = () => {
+    setOnboardStep(0);
+    setOnboardAnswers([]);
+    setOnboardChoice(null);
+    setOnboardCustom('');
+    stopDictation();
+    setAssessment(null);
+    setScreen('onboard');
+  };
+
+  const handleOnboardContinue = async () => {
+    const custom = onboardCustom.trim();
+    if (onboardChoice === null && !custom) return;
+    stopDictation();
+    const chosen = custom || ONBOARD_QUESTIONS[onboardStep].options[onboardChoice].label;
+    const updatedAnswers = [...onboardAnswers, chosen];
+    setOnboardAnswers(updatedAnswers);
+
+    if (onboardStep + 1 < ONBOARD_QUESTIONS.length) {
+      setOnboardStep(onboardStep + 1);
+      setOnboardChoice(null);
+      setOnboardCustom('');
+      return;
+    }
+
+    // Last question answered -> run the assessment agent
+    setAssessing(true);
+    setScreen('reveal');
+    try {
+      const res = await axios.post(
+        `${API_BASE}/onboarding/assess`,
+        { answers: updatedAnswers },
+        { headers: { 'x-user-id': currentUser.id } }
+      );
+      setAssessment(res.data);
+    } catch (err) {
+      console.error("Error assessing onboarding:", err);
+    } finally {
+      setAssessing(false);
+    }
   };
 
   // --- MIRROR LOGIC ---
@@ -324,18 +493,18 @@ export default function App() {
         Journal
       </button>
       <button 
+        className={`tab tab-center ${screen === 'mirror' ? 'on' : ''}`}
+        onClick={() => { setScreen('mirror'); setMirrorSubScreen('intro'); }}
+      >
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>
+        Mirror
+      </button>
+      <button 
         className={`tab ${screen === 'chat' ? 'on' : ''}`}
         onClick={() => setScreen('chat')}
       >
         <svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 119 9H4l3-3a9 9 0 01-4-6z"/></svg>
         Chat
-      </button>
-      <button 
-        className={`tab ${screen === 'mirror' ? 'on' : ''}`}
-        onClick={() => { setScreen('mirror'); setMirrorSubScreen('intro'); }}
-      >
-        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>
-        Mirror
       </button>
       <button 
         className={`tab ${screen === 'map' ? 'on' : ''}`}
@@ -404,7 +573,7 @@ export default function App() {
                   <div className="orb-large"></div>
                   <div className="welcome-title">Begin<br/><em>gently</em>.</div>
                   <p className="welcome-sub">Mirror learns who you are through stories, not questions.</p>
-                  <button className="cta" onClick={() => setScreen('onboard')}>I'm ready →</button>
+                  <button className="cta" onClick={startOnboarding}>I'm ready →</button>
                   <div className="welcome-meta">Takes about 5 minutes</div>
                 </div>
               </div>
@@ -414,24 +583,54 @@ export default function App() {
             {screen === 'onboard' && (
               <div className="screen-content active">
                 <div className="ob-body">
-                  <div className="ob-step">Question 3 of 5</div>
+                  <div className="ob-step">Question {onboardStep + 1} of {ONBOARD_QUESTIONS.length}</div>
                   <div className="ob-progress">
-                    <span className="on"></span><span className="on"></span><span className="on"></span><span></span><span></span>
+                    {ONBOARD_QUESTIONS.map((_, i) => (
+                      <span key={i} className={i <= onboardStep ? 'on' : ''}></span>
+                    ))}
                   </div>
-                  <div className="ob-question">Tell me about a time you <em>almost</em> reached out — but didn't.</div>
-                  <div className="ob-field">
+                  <div className="ob-question">{ONBOARD_QUESTIONS[onboardStep].q}</div>
+                  <div className="ob-options">
+                    {ONBOARD_QUESTIONS[onboardStep].options.map((opt, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        className={`ob-option${onboardChoice === i ? ' sel' : ''}`}
+                        onClick={() => { setOnboardChoice(i); setOnboardCustom(''); stopDictation(); }}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="ob-or">or, in your own words</div>
+                  <div className={`ob-custom${onboardCustom ? ' active' : ''}`}>
                     <textarea
-                      value={onboardInput}
-                      onChange={(e) => setOnboardInput(e.target.value)}
-                      placeholder="Write without filtering..."
+                      value={onboardCustom}
+                      onChange={(e) => { setOnboardCustom(e.target.value); if (e.target.value) setOnboardChoice(null); }}
+                      placeholder="Type how it actually feels for you…"
+                      rows={2}
                     />
+                    <button
+                      type="button"
+                      className={`ob-voice${onboardListening ? ' rec' : ''}`}
+                      onClick={toggleDictation}
+                      title={onboardListening ? 'Stop' : 'Speak'}
+                    >
+                      <Mic size={18} />
+                    </button>
                   </div>
+                  {onboardListening && <div className="ob-listening">Listening… speak now</div>}
+
                   <div className="ob-foot">
-                    <div className="ob-mic">
-                      <div className="ob-mic-dot"></div>
-                      <span>Listening · 0:14</span>
-                    </div>
-                    <button className="cta" onClick={() => setScreen('reveal')}>Continue →</button>
+                    <div className="ob-hint">Pick what's closest, or say it yourself — no wrong answer.</div>
+                    <button
+                      className="cta"
+                      disabled={onboardChoice === null && !onboardCustom.trim()}
+                      onClick={handleOnboardContinue}
+                    >
+                      {onboardStep + 1 < ONBOARD_QUESTIONS.length ? 'Continue →' : 'See my pattern →'}
+                    </button>
                   </div>
                 </div>
               </div>
@@ -441,23 +640,52 @@ export default function App() {
             {screen === 'reveal' && (
               <div className="screen-content active">
                 <div className="result-body">
-                  <div className="result-eye">Your pattern</div>
-                  <div className="result-title">
-                    {currentUser.pattern.replace('-leaning', '')}
-                    {currentUser.pattern.includes('-leaning') ? (
-                      <><em>-leaning</em>.</>
-                    ) : (
-                      <>.</>
-                    )}
-                  </div>
-                  <p className="result-desc">{getPatternDescription(currentUser.pattern)}</p>
-                  <div className="result-note">
-                    <div className="result-note-label">A note from the Mirror</div>
-                    <div className="result-note-quote">{getPatternQuote(currentUser.pattern)}</div>
-                  </div>
-                  <div className="result-cta">
-                    <button className="cta" onClick={() => setScreen('home')}>Enter Mirror</button>
-                  </div>
+                  {assessing ? (
+                    <>
+                      <div className="orb-large"></div>
+                      <div className="result-eye">Reading your stories</div>
+                      <div className="result-title">One moment<em>…</em></div>
+                      <p className="result-desc">The Mirror is listening for the shape beneath your words.</p>
+                    </>
+                  ) : (
+                    <>
+                      <div className="result-eye">Your pattern</div>
+                      <div className="result-title">
+                        {assessment ? assessment.pattern_name : (
+                          <>
+                            {currentUser.pattern.replace('-leaning', '')}
+                            {currentUser.pattern.includes('-leaning') ? <><em>-leaning</em>.</> : <>.</>}
+                          </>
+                        )}
+                      </div>
+                      {assessment && (
+                        <div className="result-eye" style={{ marginTop: 4, opacity: 0.65 }}>
+                          {assessment.primary_style}
+                          {assessment.secondary_style ? ` · with some ${assessment.secondary_style}` : ''}
+                        </div>
+                      )}
+                      <p className="result-desc">
+                        {assessment ? assessment.description : getPatternDescription(currentUser.pattern)}
+                      </p>
+                      <div className="result-note">
+                        <div className="result-note-label">A note from the Mirror</div>
+                        <div className="result-note-quote">
+                          {assessment ? assessment.quote : getPatternQuote(currentUser.pattern)}
+                        </div>
+                      </div>
+                      {assessment && assessment.triggers && assessment.triggers.length > 0 && (
+                        <div className="result-note">
+                          <div className="result-note-label">Patterns to watch</div>
+                          <div className="result-note-quote" style={{ fontStyle: 'normal' }}>
+                            {assessment.triggers.join(' · ')}
+                          </div>
+                        </div>
+                      )}
+                      <div className="result-cta">
+                        <button className="cta" onClick={() => setScreen('home')}>Enter Mirror</button>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
             )}
@@ -524,6 +752,19 @@ export default function App() {
                   <div className="journal-prompt">What's <em>true</em> right now?</div>
                 </div>
                 <div className="journal-body">
+                  {saveStatus && (
+                    <div className={`journal-status-banner ${saveStatus}`}>
+                      {saveStatus === 'saving' && (
+                        <div className="saving-spinner-wrap">
+                          <span className="spinner-dot"></span>
+                          <span>Reflecting on your thoughts...</span>
+                        </div>
+                      )}
+                      {saveStatus === 'success' && <span>✓ Journal entry saved and reflected</span>}
+                      {saveStatus === 'error' && <span>✗ Failed to save. Please try again.</span>}
+                    </div>
+                  )}
+
                   {isRecording ? (
                     <div className="ob-field animate-fade-in" style={{ minHeight: 'auto', flex: 1, justifyContent: 'center', alignItems: 'center' }}>
                       <div className="ob-mic">
@@ -537,6 +778,7 @@ export default function App() {
                       value={journalInput}
                       onChange={(e) => setJournalInput(e.target.value)}
                       placeholder="Write without filtering. Let thoughts wander..."
+                      disabled={saveStatus === 'saving'}
                     />
                   )}
                   
@@ -556,16 +798,22 @@ export default function App() {
                   <button 
                     className="cta" 
                     onClick={saveJournal}
-                    disabled={!journalInput.trim() && !isRecording}
+                    disabled={(!journalInput.trim() && !isRecording) || saveStatus === 'saving'}
                   >
-                    Save & reflect
+                    {saveStatus === 'saving' && 'Reflecting...'}
+                    {saveStatus === 'success' && 'Saved'}
+                    {saveStatus === 'error' && 'Failed'}
+                    {!saveStatus && 'Save & reflect'}
                   </button>
                   <button 
                     className="journal-voice" 
                     onClick={toggleRecording}
+                    disabled={saveStatus === 'saving'}
                     style={{
                       backgroundColor: isRecording ? 'var(--ink)' : 'var(--terra)',
-                      transform: isRecording ? 'scale(0.95)' : 'none'
+                      transform: isRecording ? 'scale(0.95)' : 'none',
+                      opacity: saveStatus === 'saving' ? 0.3 : 1,
+                      cursor: saveStatus === 'saving' ? 'not-allowed' : 'pointer'
                     }}
                   >
                     {isRecording ? '■' : '●'}
@@ -576,18 +824,44 @@ export default function App() {
             )}
 
             {/* 6. CHAT */}
-            {screen === 'chat' && (
-              <div className="screen-content active">
-                <div className="chat-head">
-                  <div className="chat-back" onClick={() => setScreen('home')}>←</div>
-                  <div className="chat-avatar"></div>
-                  <div className="chat-name">
-                    The Therapist
-                    <small>Conscious layer</small>
+            {screen === 'chat' && (() => {
+              const topicDetails = {
+                general: { name: "The Therapist", role: "Conscious layer", avatarClass: "avatar-general" },
+                anxiety: { name: "The Anxiety Specialist", role: "Worry & panic", avatarClass: "avatar-anxiety" },
+                depression: { name: "The Mood Guide", role: "Low mood & motivation", avatarClass: "avatar-depression" },
+                trauma: { name: "The Steady Presence", role: "A safe, gentle space", avatarClass: "avatar-trauma" },
+                grief: { name: "The Grief Companion", role: "Loss & bereavement", avatarClass: "avatar-grief" },
+                stress: { name: "The Burnout Coach", role: "Stress & overwhelm", avatarClass: "avatar-stress" },
+                relationship: { name: "The Relationship Guide", role: "Attachment patterns", avatarClass: "avatar-relationship" },
+                mental: { name: "The Wellness Coach", role: "Emotional regulation", avatarClass: "avatar-mental" },
+                family: { name: "The Family Specialist", role: "Childhood systems", avatarClass: "avatar-family" }
+              };
+              const details = topicDetails[activeTopic] || topicDetails.general;
+              
+              return (
+                <div className="screen-content active">
+                  <div className="chat-head">
+                    <div className="chat-back" onClick={() => setScreen('home')}>←</div>
+                    <div className={`chat-avatar ${details.avatarClass}`}></div>
+                    <div className="chat-name">
+                      {details.name}
+                      <small>{details.role}</small>
+                    </div>
                   </div>
-                </div>
 
-                <div className="chat-body" ref={chatBodyRef}>
+                  <div className="chat-topics">
+                    <button className={`topic-btn ${activeTopic === 'general' ? 'active' : ''}`} onClick={() => changeTopic('general')}>General</button>
+                    <button className={`topic-btn ${activeTopic === 'anxiety' ? 'active' : ''}`} onClick={() => changeTopic('anxiety')}>Anxiety</button>
+                    <button className={`topic-btn ${activeTopic === 'depression' ? 'active' : ''}`} onClick={() => changeTopic('depression')}>Depression</button>
+                    <button className={`topic-btn ${activeTopic === 'trauma' ? 'active' : ''}`} onClick={() => changeTopic('trauma')}>Trauma</button>
+                    <button className={`topic-btn ${activeTopic === 'grief' ? 'active' : ''}`} onClick={() => changeTopic('grief')}>Grief</button>
+                    <button className={`topic-btn ${activeTopic === 'stress' ? 'active' : ''}`} onClick={() => changeTopic('stress')}>Stress</button>
+                    <button className={`topic-btn ${activeTopic === 'relationship' ? 'active' : ''}`} onClick={() => changeTopic('relationship')}>Relationships</button>
+                    <button className={`topic-btn ${activeTopic === 'mental' ? 'active' : ''}`} onClick={() => changeTopic('mental')}>Calm</button>
+                    <button className={`topic-btn ${activeTopic === 'family' ? 'active' : ''}`} onClick={() => changeTopic('family')}>Family</button>
+                  </div>
+
+                  <div className="chat-body" ref={chatBodyRef}>
                   {chats.map((c, i) => (
                     <div 
                       key={c.id || i} 
@@ -606,26 +880,17 @@ export default function App() {
                 </div>
 
                 <div className="chat-input-wrap">
-                  {chats.length === 1 && !isTyping && (
+                  {!isTyping && chats.length > 0 && chats[chats.length - 1].sender === 'them' && (
                     <div className="quick-replies">
-                      <button 
-                        className="quick-reply" 
-                        onClick={() => selectQuickReply("I keep checking if he's online.")}
-                      >
-                        "I keep checking if he's online."
-                      </button>
-                      <button 
-                        className="quick-reply" 
-                        onClick={() => selectQuickReply("I feel small.")}
-                      >
-                        "I feel small."
-                      </button>
-                      <button 
-                        className="quick-reply" 
-                        onClick={() => selectQuickReply("Just tired.")}
-                      >
-                        "Just tired."
-                      </button>
+                      {QUICK_REPLIES.map((reply, i) => (
+                        <button
+                          key={i}
+                          className="quick-reply"
+                          onClick={() => selectQuickReply(reply)}
+                        >
+                          {reply}
+                        </button>
+                      ))}
                     </div>
                   )}
                   <div className="chat-input">
@@ -634,7 +899,7 @@ export default function App() {
                       value={chatInput}
                       onChange={(e) => setChatInput(e.target.value)}
                       onKeyDown={(e) => e.key === 'Enter' && sendChatMessage()}
-                      placeholder="Reply to The Therapist…"
+                      placeholder={`Reply to ${details.name}…`}
                     />
                     <button 
                       className="chat-input-mic"
@@ -646,7 +911,8 @@ export default function App() {
                   </div>
                 </div>
               </div>
-            )}
+            );
+          })()}
 
             {/* 7. MIRROR */}
             {screen === 'mirror' && (

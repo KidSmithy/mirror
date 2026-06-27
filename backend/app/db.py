@@ -1,17 +1,27 @@
 import logging
+import os
+import json
+from datetime import date
 from supabase import create_client, Client
 from app.config import settings
 
 logger = logging.getLogger("mirror-db")
 
-# In-memory database fallback for seamless developer testing before Supabase credentials are set
+class _MockResponse:
+    def __init__(self, data):
+        self.data = data
+
+# Local JSON database fallback for seamless developer testing
 class MockQueryBuilder:
-    def __init__(self, table_name: str, db_store: dict):
+    def __init__(self, table_name: str, db_store: dict, save_callback=None):
         self.table_name = table_name
         self.db_store = db_store
         self.filters = []
         self.order_by = None
         self.order_desc = False
+        self.insert_data = None
+        self.update_data = None
+        self.save_callback = save_callback
 
     def select(self, columns: str = "*"):
         return self
@@ -25,7 +35,45 @@ class MockQueryBuilder:
         self.order_desc = desc
         return self
 
+    def insert(self, data: dict):
+        self.insert_data = data
+        return self
+
+    def update(self, data: dict):
+        self.update_data = data
+        return self
+
     def execute(self):
+        if self.insert_data is not None:
+            records = self.db_store.setdefault(self.table_name, [])
+            if isinstance(self.insert_data, list):
+                for item in self.insert_data:
+                    records.append(item)
+                inserted_data = self.insert_data
+            else:
+                records.append(self.insert_data)
+                inserted_data = [self.insert_data]
+            if self.save_callback:
+                self.save_callback()
+            return _MockResponse(inserted_data)
+
+        if self.update_data is not None:
+            records = self.db_store.get(self.table_name, [])
+            updated = []
+            for r in records:
+                match = True
+                for col, val in self.filters:
+                    if r.get(col) != val:
+                        match = False
+                        break
+                if match:
+                    r.update(self.update_data)
+                    updated.append(r)
+            if self.save_callback:
+                self.save_callback()
+            return _MockResponse(updated)
+
+        # Otherwise, perform select query
         records = self.db_store.get(self.table_name, [])
         filtered_records = []
         for r in records:
@@ -43,49 +91,11 @@ class MockQueryBuilder:
                 reverse=self.order_desc
             )
         
-        # Wrap in a helper class that mimics postgrest response
-        class Response:
-            def __init__(self, data):
-                self.data = data
-        return Response(filtered_records)
-
-    def insert(self, data: dict):
-        records = self.db_store.setdefault(self.table_name, [])
-        # If it's a list of dicts or single dict
-        if isinstance(data, list):
-            for item in data:
-                records.append(item)
-            inserted_data = data
-        else:
-            records.append(data)
-            inserted_data = [data]
-        
-        class Response:
-            def __init__(self, data):
-                self.data = data
-        return Response(inserted_data)
-
-    def update(self, data: dict):
-        # Simply find by ID in our filters and update
-        records = self.db_store.get(self.table_name, [])
-        updated = []
-        for r in records:
-            match = True
-            for col, val in self.filters:
-                if r.get(col) != val:
-                    match = False
-                    break
-            if match:
-                r.update(data)
-                updated.append(r)
-        
-        class Response:
-            def __init__(self, data):
-                self.data = data
-        return Response(updated)
+        return _MockResponse(filtered_records)
 
 class MockSupabaseClient:
-    def __init__(self):
+    def __init__(self, db_path=None):
+        self.db_path = db_path or os.getenv("MOCK_DB_PATH") or os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "mock_db.json"))
         self.db_store = {
             "journals": [],
             "chats": [],
@@ -112,6 +122,7 @@ class MockSupabaseClient:
             "attachment_map": [
                 {
                     "user_id": "e1a8b9c8-1234-5678-abcd-ef0123456789",
+                    "date": date.today().isoformat(),
                     "anxious_count": 12,
                     "avoidant_count": 7,
                     "secure_count": 19
@@ -194,9 +205,32 @@ class MockSupabaseClient:
                 }
             ]
         }
+        self._load_db()
+
+    def _load_db(self):
+        if os.path.exists(self.db_path):
+            try:
+                with open(self.db_path, "r") as f:
+                    loaded = json.load(f)
+                    if isinstance(loaded, dict):
+                        for k, v in loaded.items():
+                            self.db_store[k] = v
+                logger.info(f"Loaded local mock database from {self.db_path}")
+            except Exception as e:
+                logger.error(f"Failed to load mock db file: {e}")
+        else:
+            self._save_db()
+
+    def _save_db(self):
+        try:
+            with open(self.db_path, "w") as f:
+                json.dump(self.db_store, f, indent=2)
+            logger.info(f"Saved local mock database to {self.db_path}")
+        except Exception as e:
+            logger.error(f"Failed to save mock db file: {e}")
 
     def table(self, table_name: str):
-        return MockQueryBuilder(table_name, self.db_store)
+        return MockQueryBuilder(table_name, self.db_store, save_callback=self._save_db)
 
 # Initialize Supabase client
 supabase_client = None
@@ -208,5 +242,5 @@ if settings.supabase_url and settings.supabase_key and not settings.supabase_url
         logger.error(f"Error initializing Supabase client: {e}. Falling back to mock client.")
         supabase_client = MockSupabaseClient()
 else:
-    logger.warning("Supabase URL or Key not set. Running with local in-memory MockSupabaseClient.")
+    logger.warning("Supabase URL or Key not set. Running with local mock database.")
     supabase_client = MockSupabaseClient()

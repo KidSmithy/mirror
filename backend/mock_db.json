@@ -1,0 +1,114 @@
+{
+  "journals": [],
+  "chats": [
+    {
+      "id": "9620d4e8-df54-4616-8e6e-33749be5b471",
+      "user_id": "e1a8b9c8-1234-5678-abcd-ef0123456789",
+      "created_at": "2026-06-27T04:43:01.405045",
+      "sender": "me",
+      "message": "I feel anxious when she does not reply",
+      "topic": "relationship"
+    },
+    {
+      "id": "3e8ee8d5-b43a-4420-8903-910e8e2ac703",
+      "user_id": "e1a8b9c8-1234-5678-abcd-ef0123456789",
+      "created_at": "2026-06-27T04:43:01.683069",
+      "sender": "them",
+      "message": "I hear you, and it makes sense why that would feel heavy. *What do you think is trying to be protected in this moment?*",
+      "topic": "relationship"
+    },
+    {
+      "id": "fa80978c-3118-472b-b379-ae203d480cba",
+      "user_id": "e1a8b9c8-1234-5678-abcd-ef0123456789",
+      "created_at": "2026-06-27T04:44:41.242411",
+      "sender": "me",
+      "message": "Hello",
+      "topic": "general"
+    },
+    {
+      "id": "06a7a9b2-92a7-4467-b92b-fc3ba13a2de8",
+      "user_id": "e1a8b9c8-1234-5678-abcd-ef0123456789",
+      "created_at": "2026-06-27T04:44:41.487209",
+      "sender": "them",
+      "message": "I hear you, and it makes sense why that would feel heavy. *What do you think is trying to be protected in this moment?*",
+      "topic": "general"
+    },
+    {
+      "id": "bffc19fb-c270-433e-93ed-4995da4f2586",
+      "user_id": "e1a8b9c8-1234-5678-abcd-ef0123456789",
+      "created_at": "2026-06-27T04:44:43.475477",
+      "sender": "me",
+      "message": "Ok",
+      "topic": "general"
+    },
+    {
+      "id": "a6d37b06-3b63-49f2-a158-97f2cd7d9ba0",
+      "user_id": "e1a8b9c8-1234-5678-abcd-ef0123456789",
+      "created_at": "2026-06-27T04:44:43.604031",
+      "sender": "them",
+      "message": "I hear you, and it makes sense why that would feel heavy. *What do you think is trying to be protected in this moment?*",
+      "topic": "general"
+    },
+    {
+      "id": "0e411034-73e5-4a4f-b16c-4a19de04e046",
+      "user_id": "e1a8b9c8-1234-5678-abcd-ef0123456789",
+      "created_at": "2026-06-27T04:44:50.193538",
+      "sender": "me",
+      "message": "I feel bad with my girl friend",
+      "topic": "general"
+    },
+    {
+      "id": "50db04a2-8cad-4ab3-a2b3-420443c1c361",
+      "user_id": "e1a8b9c8-1234-5678-abcd-ef0123456789",
+      "created_at": "2026-06-27T04:44:55.376118",
+      "sender": "them",
+      "message": "It sounds like you're carrying a difficult feeling in your relationship with your girlfriend, and that must feel quite heavy. When you feel this \"bad\" feeling, what do you notice yourself needing or longing for in your connection?",
+      "topic": "general"
+    },
+    {
+      "id": "2782205b-110a-426c-9dbe-b208722b03d7",
+      "user_id": "e1a8b9c8-1234-5678-abcd-ef0123456789",
+      "created_at": "2026-06-27T04:49:40.141370",
+      "sender": "me",
+      "message": "Hello",
+      "topic": "general"
+    },
+    {
+      "id": "a3acd37a-5705-4780-b067-c87979f69217",
+      "user_id": "e1a8b9c8-1234-5678-abcd-ef0123456789",
+      "created_at": "2026-06-27T04:49:40.510689",
+      "sender": "them",
+      "message": "I hear you, and it makes sense why that would feel heavy. *What do you think is trying to be protected in this moment?*",
+      "topic": "general"
+    }
+  ],
+  "observations": [
+    {
+      "id": "obs1-uuid",
+      "user_id": "e1a8b9c8-1234-5678-abcd-ef0123456789",
+      "week_num": 12,
+      "category": "distance",
+      "quote": "You've written about your mother 14 times this month. You've never called her 'mom.' Always 'my mother.' What might that distance protect?",
+      "evidence": "14 mentions across journal entries from June 3-25. The shift happened on March 14, the week after the call about your father.",
+      "feedback": null
+    },
+    {
+      "id": "obs2-uuid",
+      "user_id": "e1a8b9c8-1234-5678-abcd-ef0123456789",
+      "week_num": 12,
+      "category": "checking",
+      "quote": "You wrote 'I shouldn't have' seven times this week. Always after reaching out. Never after staying silent. Notice what shape that is.",
+      "evidence": "7 entries containing 'I shouldn't have' followed by a self-soothing line within 3 sentences. The shape: reach, retract, repair.",
+      "feedback": null
+    }
+  ],
+  "attachment_map": [
+    {
+      "user_id": "e1a8b9c8-1234-5678-abcd-ef0123456789",
+      "date": "2026-06-27",
+      "anxious_count": 12,
+      "avoidant_count": 7,
+      "secure_count": 19
+    }
+  ]
+}
