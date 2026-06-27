@@ -12,6 +12,8 @@ class MockQueryBuilder:
         self.filters = []
         self.order_by = None
         self.order_desc = False
+        self.insert_data = None
+        self.update_data = None
 
     def select(self, columns: str = "*"):
         return self
@@ -25,7 +27,46 @@ class MockQueryBuilder:
         self.order_desc = desc
         return self
 
+    def insert(self, data: dict):
+        self.insert_data = data
+        return self
+
+    def update(self, data: dict):
+        self.update_data = data
+        return self
+
     def execute(self):
+        # Wrap in a helper class that mimics postgrest response
+        class Response:
+            def __init__(self, data):
+                self.data = data
+
+        if self.insert_data is not None:
+            records = self.db_store.setdefault(self.table_name, [])
+            if isinstance(self.insert_data, list):
+                for item in self.insert_data:
+                    records.append(item)
+                inserted_data = self.insert_data
+            else:
+                records.append(self.insert_data)
+                inserted_data = [self.insert_data]
+            return Response(inserted_data)
+
+        if self.update_data is not None:
+            records = self.db_store.get(self.table_name, [])
+            updated = []
+            for r in records:
+                match = True
+                for col, val in self.filters:
+                    if r.get(col) != val:
+                        match = False
+                        break
+                if match:
+                    r.update(self.update_data)
+                    updated.append(r)
+            return Response(updated)
+
+        # Otherwise, perform select query
         records = self.db_store.get(self.table_name, [])
         filtered_records = []
         for r in records:
@@ -43,46 +84,7 @@ class MockQueryBuilder:
                 reverse=self.order_desc
             )
         
-        # Wrap in a helper class that mimics postgrest response
-        class Response:
-            def __init__(self, data):
-                self.data = data
         return Response(filtered_records)
-
-    def insert(self, data: dict):
-        records = self.db_store.setdefault(self.table_name, [])
-        # If it's a list of dicts or single dict
-        if isinstance(data, list):
-            for item in data:
-                records.append(item)
-            inserted_data = data
-        else:
-            records.append(data)
-            inserted_data = [data]
-        
-        class Response:
-            def __init__(self, data):
-                self.data = data
-        return Response(inserted_data)
-
-    def update(self, data: dict):
-        # Simply find by ID in our filters and update
-        records = self.db_store.get(self.table_name, [])
-        updated = []
-        for r in records:
-            match = True
-            for col, val in self.filters:
-                if r.get(col) != val:
-                    match = False
-                    break
-            if match:
-                r.update(data)
-                updated.append(r)
-        
-        class Response:
-            def __init__(self, data):
-                self.data = data
-        return Response(updated)
 
 class MockSupabaseClient:
     def __init__(self):
@@ -112,6 +114,7 @@ class MockSupabaseClient:
             "attachment_map": [
                 {
                     "user_id": "e1a8b9c8-1234-5678-abcd-ef0123456789",
+                    "date": "2026-06-27",
                     "anxious_count": 12,
                     "avoidant_count": 7,
                     "secure_count": 19
