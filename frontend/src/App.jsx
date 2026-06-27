@@ -87,6 +87,17 @@ export default function App() {
   const [chats, setChats] = useState([]);
   const [observations, setObservations] = useState([]);
   const [attachmentMap, setAttachmentMap] = useState(null);
+  const [profile, setProfile] = useState(null);
+  const [showReflection, setShowReflection] = useState(false);
+  const [timeline, setTimeline] = useState([]);
+  const [activeReflectionTab, setActiveReflectionTab] = useState('current'); // 'current' | 'ideal'
+  const [ttsPlaying, setTtsPlaying] = useState(false);
+  const [expandedTimelineId, setExpandedTimelineId] = useState(null);
+  const [mirrorChatInput, setMirrorChatInput] = useState('');
+  const [mirrorChatLoading, setMirrorChatLoading] = useState(false);
+  const [mirrorVoiceRecording, setMirrorVoiceRecording] = useState(false);
+  const audioRef = useRef(null);
+  const mirrorRecognitionRef = useRef(null);
   
   // Interactive UI states
   const [loading, setLoading] = useState(false);
@@ -133,17 +144,21 @@ export default function App() {
     setLoading(true);
     const headers = { 'x-user-id': currentUser.id };
     try {
-      const [journalRes, chatRes, obsRes, mapRes] = await Promise.all([
+      const [journalRes, chatRes, obsRes, mapRes, profileRes, reflectionsRes] = await Promise.all([
         axios.get(`${API_BASE}/journals`, { headers }),
         axios.get(`${API_BASE}/chats?topic=general`, { headers }),
         axios.get(`${API_BASE}/observations`, { headers }),
-        axios.get(`${API_BASE}/attachment-map`, { headers })
+        axios.get(`${API_BASE}/attachment-map`, { headers }),
+        axios.get(`${API_BASE}/profile`, { headers }).catch(() => ({ data: null })),
+        axios.get(`${API_BASE}/reflections`, { headers }).catch(() => ({ data: [] }))
       ]);
       
       setJournals(journalRes.data);
       setChats(chatRes.data);
       setObservations(obsRes.data);
       setAttachmentMap(mapRes.data);
+      setProfile(profileRes ? profileRes.data : null);
+      setTimeline(reflectionsRes ? reflectionsRes.data : []);
       setObsIndex(0);
     } catch (err) {
       console.error("Error loading user data from backend:", err);
@@ -377,6 +392,70 @@ export default function App() {
     }
   };
 
+  const playTTS = async (text) => {
+    if (ttsPlaying && audioRef.current) {
+      audioRef.current.pause();
+      setTtsPlaying(false);
+      return;
+    }
+    setTtsPlaying(true);
+    try {
+      const response = await axios.post(`${API_BASE}/tts`, { text }, { responseType: 'blob' });
+      const audioUrl = URL.createObjectURL(response.data);
+      const audio = new Audio(audioUrl);
+      audioRef.current = audio;
+      audio.onended = () => setTtsPlaying(false);
+      audio.play();
+    } catch (err) {
+      console.error("Gemini TTS playback failed:", err);
+      setTtsPlaying(false);
+    }
+  };
+
+  const submitMirrorReflectionQuery = async () => {
+    if (!mirrorChatInput.trim() || mirrorChatLoading) return;
+    setMirrorChatLoading(true);
+    const headers = { 'x-user-id': currentUser.id };
+    try {
+      const res = await axios.post(`${API_BASE}/reflections/interact`, { message: mirrorChatInput }, { headers });
+      if (res.data && res.data.status === "success") {
+        await fetchUserData();
+        setMirrorChatInput('');
+      }
+    } catch (err) {
+      console.error("Error updating reflection from mirror interaction:", err);
+    } finally {
+      setMirrorChatLoading(false);
+    }
+  };
+
+  const toggleMirrorVoice = () => {
+    if (mirrorVoiceRecording && mirrorRecognitionRef.current) {
+      mirrorRecognitionRef.current.stop();
+      setMirrorVoiceRecording(false);
+      return;
+    }
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert('Voice input is not supported in this browser.');
+      return;
+    }
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'en-US';
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+    mirrorRecognitionRef.current = recognition;
+    setMirrorVoiceRecording(true);
+    recognition.onresult = (event) => {
+      const transcript = event.results[0][0].transcript;
+      setMirrorChatInput(prev => prev ? prev + ' ' + transcript : transcript);
+      setMirrorVoiceRecording(false);
+    };
+    recognition.onerror = () => setMirrorVoiceRecording(false);
+    recognition.onend = () => setMirrorVoiceRecording(false);
+    recognition.start();
+  };
+
   const getPatternDescription = (pattern) => {
     if (pattern.includes('Anxious')) {
       return "You stay close. You over-tend. You're often the one who notices the silence before anyone else does.";
@@ -439,7 +518,7 @@ export default function App() {
 
   // Determine if the current screen requires dark styling
   const isDarkScreen = ['welcome', 'onboard', 'reveal'].includes(screen) === false && 
-                       (screen === 'mirror' && (mirrorSubScreen === 'intro' || mirrorSubScreen === 'observation' || mirrorSubScreen === 'integration'));
+                       (showReflection || (screen === 'mirror' && (mirrorSubScreen === 'intro' || mirrorSubScreen === 'observation' || mirrorSubScreen === 'integration')));
 
   return (
     <>
@@ -841,7 +920,7 @@ export default function App() {
                 {observations.length === 0 ? (
                   <div className="screen-content dark active">
                     <div className="mirror-intro">
-                      <div className="orb-mirror"></div>
+                      <div className="orb-mirror" onClick={() => setShowReflection(true)} style={{ cursor: 'pointer' }}></div>
                       <h3 className="mirror-title">The Mirror is <em>sleeping</em></h3>
                       <p className="mirror-sub">
                         Write some journals and chat with the Therapist first. Then prompt the Mirror to inspect your logs.
@@ -863,7 +942,7 @@ export default function App() {
                     {mirrorSubScreen === 'intro' && (
                       <div className="screen-content dark active">
                         <div className="mirror-intro">
-                          <div className="orb-mirror"></div>
+                          <div className="orb-mirror" onClick={() => setShowReflection(true)} style={{ cursor: 'pointer' }}></div>
                           <div className="mirror-eye">Mirror Session · Week 12</div>
                           <div className="mirror-title">I noticed<br/><em>some things</em>.</div>
                           <p className="mirror-sub">Each is something you wrote yourself. I'm only showing it back.</p>
@@ -920,9 +999,17 @@ export default function App() {
                     {mirrorSubScreen === 'integration' && (
                       <div className="screen-content dark active">
                         <div className="integ-head">
+                          <div className="orb-mirror" onClick={() => setShowReflection(true)} style={{ cursor: 'pointer', marginBottom: '16px' }}></div>
                           <div className="mirror-eye">Session complete</div>
                           <div className="obs-title">Sit <em>with this</em>.</div>
                           <p className="mirror-sub" style={{ marginTop: '8px', marginBottom: 0 }}>There's nothing to do tonight.</p>
+                          <button 
+                            className="cta cta-outline" 
+                            style={{ marginTop: '12px', fontSize: '11px', padding: '6px 16px', opacity: 0.85 }}
+                            onClick={() => setShowReflection(true)}
+                          >
+                            View my Reflection ✦
+                          </button>
                         </div>
                         
                         <div className="integ-card">
@@ -969,6 +1056,156 @@ export default function App() {
                       </div>
                     )}
                   </>
+                )}
+                {showReflection && (
+                  <div className="reflection-overlay animate-fade-in">
+                    <div className="reflection-header">
+                      <button 
+                        className="reflection-back-btn" 
+                        onClick={() => { setShowReflection(false); setTtsPlaying(false); if (audioRef.current) audioRef.current.pause(); }}
+                        title="Go back"
+                      >
+                        ←
+                      </button>
+                      <div className="reflection-header-title">Reflection</div>
+                      <div style={{ width: 32 }}></div>
+                    </div>
+
+                    <div className="reflection-body-scroll">
+                      <div className="reflection-modal" onClick={(e) => e.stopPropagation()}>
+                        
+                        <div className="reflection-tabs">
+                          <button 
+                            className={`reflection-tab ${activeReflectionTab === 'current' ? 'active' : ''}`}
+                            onClick={() => { setActiveReflectionTab('current'); setTtsPlaying(false); if (audioRef.current) audioRef.current.pause(); }}
+                          >
+                            Current Self
+                          </button>
+                          <button 
+                            className={`reflection-tab ${activeReflectionTab === 'ideal' ? 'active' : ''}`}
+                            onClick={() => { setActiveReflectionTab('ideal'); setTtsPlaying(false); if (audioRef.current) audioRef.current.pause(); }}
+                          >
+                            Ideal Self
+                          </button>
+                        </div>
+
+                        <div className="portrait-container">
+                          {activeReflectionTab === 'current' ? (
+                            <img 
+                              src={timeline[0]?.image_url || "https://uqsflvuuhbxkgmrydvdd.supabase.co/storage/v1/object/public/reflections/enkh_june27.png"} 
+                              className="orb-portrait animate-pulse-slow" 
+                              alt="Current Ghibli Reflection" 
+                            />
+                          ) : (
+                            <img 
+                              src={profile?.ideal_image_url || "https://uqsflvuuhbxkgmrydvdd.supabase.co/storage/v1/object/public/reflections/enkh_ideal.png"} 
+                              className="orb-portrait animate-pulse-slow" 
+                              alt="Ideal Ghibli Reflection" 
+                            />
+                          )}
+                        </div>
+
+                        <div className="reflection-title">
+                          {activeReflectionTab === 'current' ? (
+                            <>Through the <em>looking glass</em></>
+                          ) : (
+                            <>Your <em>ideal reflection</em></>
+                          )}
+                        </div>
+                        <div className="reflection-name">
+                          {profile?.name || currentUser.name}
+                        </div>
+                        <div className="reflection-style">
+                          {activeReflectionTab === 'current' ? (profile?.attachment_style || currentUser.pattern) : "Secure Alignment"}
+                        </div>
+                        
+                        <div className="tts-wrap">
+                          <button 
+                            className={`tts-button ${ttsPlaying ? 'playing' : ''}`}
+                            onClick={() => playTTS(activeReflectionTab === 'current' ? (profile?.overall_reflection || timeline[0]?.overall_reflection) : profile?.ideal_reflection)}
+                          >
+                            {ttsPlaying ? '🔊 Playing...' : '🔈 Listen'}
+                          </button>
+                        </div>
+
+                        <p className="reflection-text">
+                          {activeReflectionTab === 'current' ? (
+                            (profile?.overall_reflection || timeline[0]?.overall_reflection || "The mirror is dark. Speak to it through journals and chats to reveal your reflection.")
+                          ) : (
+                            (profile?.ideal_reflection || "A peaceful, secure reflection is taking shape. Keep writing to clarify this vision.")
+                          )}
+                        </p>
+
+                        {activeReflectionTab === 'current' && timeline.length > 0 && (
+                          <div className="reflection-timeline-container">
+                            <div className="timeline-title">Self-Inquiry Timeline</div>
+                            <div className="timeline-list">
+                              {timeline.map((item) => {
+                                const isExpanded = expandedTimelineId === item.id;
+                                const formattedDate = new Date(item.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                                return (
+                                  <div key={item.id} className="timeline-item">
+                                    <div className="timeline-node-wrap">
+                                      <span className="timeline-node"></span>
+                                      <span className="timeline-date">{formattedDate}</span>
+                                    </div>
+                                    <div 
+                                      className={`timeline-card ${isExpanded ? 'expanded' : ''}`}
+                                      onClick={() => setExpandedTimelineId(isExpanded ? null : item.id)}
+                                    >
+                                      <div className="timeline-card-header">
+                                        <img src={item.image_url} className="timeline-avatar" alt="Ghibli avatar" />
+                                        <div className="timeline-card-meta">
+                                          <div className="timeline-card-style">{item.attachment_style}</div>
+                                          <div className="timeline-card-insight">{item.insight}</div>
+                                        </div>
+                                        <span className="timeline-card-arrow">{isExpanded ? '▲' : '▼'}</span>
+                                      </div>
+                                      {isExpanded && (
+                                        <p className="timeline-card-text animate-fade-in">
+                                          {item.overall_reflection}
+                                        </p>
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="mirror-interact-section">
+                          <div className="mirror-interact-label">Speak to your reflection</div>
+                          <textarea
+                            placeholder="Tell the mirror what you're feeling, what you want to become, or ask it to reflect on something specific..."
+                            value={mirrorChatInput}
+                            onChange={(e) => setMirrorChatInput(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submitMirrorReflectionQuery(); } }}
+                            className="mirror-chat-textarea"
+                            rows={3}
+                            disabled={mirrorChatLoading}
+                          />
+                          <div className="mirror-interact-actions">
+                            <button 
+                              className={`mirror-mic-btn ${mirrorVoiceRecording ? 'recording' : ''}`}
+                              onClick={toggleMirrorVoice}
+                              title={mirrorVoiceRecording ? 'Stop recording' : 'Voice input'}
+                            >
+                              {mirrorVoiceRecording ? '⏹' : '🎙'}
+                            </button>
+                            <button 
+                              className="cta cta-light mirror-reflect-btn"
+                              onClick={submitMirrorReflectionQuery}
+                              disabled={mirrorChatLoading || !mirrorChatInput.trim()}
+                            >
+                              {mirrorChatLoading ? 'Reflecting...' : 'Reflect ✦'}
+                            </button>
+                          </div>
+                        </div>
+
+                      </div>
+                    </div>
+                  </div>
                 )}
               </>
             )}
