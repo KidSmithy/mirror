@@ -123,6 +123,7 @@ export default function App() {
   const [mirrorSubScreen, setMirrorSubScreen] = useState('intro'); // 'intro' | 'observation' | 'integration'
   const [obsIndex, setObsIndex] = useState(0); // 0, 1, or 2 (complete)
   const [mirrorStatus, setMirrorStatus] = useState('idle'); // 'idle' | 'analyzing' | 'finished'
+  const [feedbackSubmitting, setFeedbackSubmitting] = useState(false);
 
   const chatEndRef = useRef(null);
   const chatBodyRef = useRef(null);
@@ -374,6 +375,8 @@ export default function App() {
   };
 
   const handleObsFeedback = async (obsId, val) => {
+    if (feedbackSubmitting) return;
+    setFeedbackSubmitting(true);
     const headers = { 'x-user-id': currentUser.id };
     try {
       const res = await axios.post(`${API_BASE}/observations/${obsId}/feedback`, { feedback: val }, { headers });
@@ -381,6 +384,7 @@ export default function App() {
       setObservations(prev => prev.map(o => o.id === obsId ? res.data : o));
       // Move to next slide after a short delay
       setTimeout(() => {
+        setFeedbackSubmitting(false);
         if (obsIndex + 1 >= observations.length) {
           setMirrorSubScreen('integration');
         } else {
@@ -389,6 +393,7 @@ export default function App() {
       }, 500);
     } catch (err) {
       console.error("Error submitting feedback:", err);
+      setFeedbackSubmitting(false);
     }
   };
 
@@ -983,6 +988,7 @@ export default function App() {
                                   key={opt}
                                   onClick={() => handleObsFeedback(observations[obsIndex].id, opt)}
                                   className={`pill ${isSelected ? 'selected' : ''}`}
+                                  disabled={feedbackSubmitting}
                                 >
                                   {opt === 'lands' ? 'Lands' : opt === 'not_yet' ? 'Not yet' : 'Say more'}
                                 </button>
