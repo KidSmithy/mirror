@@ -1,6 +1,6 @@
 # Mirror — AI for Self-Inquiry
 
-Mirror is a wellness application built on attachment science. It utilizes a **Two-Agent AI Architecture** powered by Google Gemini to help users understand their relationship dynamics and attachment styles:
+Mirror is a wellness application built on attachment science. It utilizes a **Two-Agent AI Architecture** powered by OpenAI to help users understand their relationship dynamics and attachment styles:
 
 * **Conscious Agent ("The Therapist")**: Warm, Socratic, and empathetic. Chats and reflects with the user, guiding them through daily self-inquiry.
 * **Unconscious Agent ("The Mirror")**: Runs silently across the database of journals and chat history. Once a week, it surfaces one direct, evidence-based, and uncomfortable observation regarding avoidances, omissions, or naming shifts.
@@ -12,7 +12,7 @@ Mirror is a wellness application built on attachment science. It utilizes a **Tw
 * **Frontend**: React, Vite, Tailwind CSS (configured in Minimalist Light Mode)
 * **Backend**: FastAPI, Python 3.11, Uvicorn
 * **Database**: Supabase
-* **AI Engine**: Google Gemini API via the `google-genai` Python SDK
+* **AI Engine**: OpenAI API via the `openai` Python SDK
 
 ---
 
@@ -31,7 +31,7 @@ mirror/
 │   ├── app/
 │   │   ├── main.py         # App routers & CORS configurations
 │   │   ├── db.py           # Supabase DB integrations with a local Mock fallback client
-│   │   ├── ai.py           # Gemini API prompts (Therapist Chat, Tagging, Observations)
+│   │   ├── ai.py           # OpenAI API prompts (Therapist Chat, Tagging, Observations, Image Generation)
 │   │   ├── config.py       # Pydantic environment configuration loader
 │   │   └── models.py       # Request & response validation models
 │   ├── requirements.txt    # Python dependencies
@@ -47,9 +47,9 @@ mirror/
 ### 1. Setup Environment Credentials
 The backend uses a local Mock fallback database and simulated AI responses out-of-the-box, but to connect live services:
 * Open `backend/.env` (created for you with Supabase credentials).
-* Replace `your-gemini-api-key` with your official Google Gemini API key:
+* Replace the OpenAI placeholder key with your official OpenAI API key:
   ```ini
-  GEMINI_API_KEY=AIzaSy...
+  OPENAI_API_KEY=sk-proj-...
   ```
 
 ### 2. Start the Backend API (FastAPI)

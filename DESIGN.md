@@ -3,29 +3,19 @@
 > A companion that knows your attachment patterns better than you do, and uses
 > that to reflect you back to yourself.
 
-**Event:** Google Gemini AI Hackathon
-**Deliverable:** 3-minute demo + a **deployed** app link (Cloud Run / agent runtime)
-**GCP project:** `still-tensor-482713-e9`
+**AI Engine Migration:** Google Gemini AI -> OpenAI
 **Sources:** Notion — *Attachment Styles* and *2026-05-31 Session*; current `mirror` repo
 
 ---
 
 ## Judging Criteria (and how Mirror hits each)
 
-1. **Use of Google Cloud** — *must* use Google Cloud products (Gemini API, AI
-   Studio, Antigravity, Vertex AI, etc.). **Missing integration disqualifies the
-   team from prizes.**
-   → Mirror runs both agents on Gemini; target is Vertex AI on
-   `still-tensor-482713-e9`. See §5.
-2. **Innovation** — creativity / originality. Bonus for I/O 2026 capabilities:
-   **Managed Agents, multimodal generation.**
-   → The two-agent conscious/unconscious split (Managed Agents) + multimodal
-   voice journaling and Imagen attachment maps. See §4, §5.
+1. **AI Engine** — Powered by OpenAI (`gpt-4o-mini`, `gpt-image-2` for images, `tts-1` for audio).
+2. **Innovation** — The two-agent conscious/unconscious split + multimodal voice journaling and DALL-E 3 attachment maps.
 3. **Completeness** — does it work? Is it demo-ready?
    → End-to-end flow already runs; scripted 3-min demo in §11.
-4. **Deployed project** — submit a **deployed app/website link via agent runtime
-   / Cloud Run.**
-   → Deployment plan in §12. **This is currently the biggest gap.**
+4. **Deployed project** — submit a deployed app/website link.
+   → Deployment plan in §12.
 
 ---
 
@@ -103,34 +93,29 @@ all journals, chats, and mood logs. Two outputs:
 ```
 React + Vite + Tailwind  ──HTTP──►  FastAPI  ──►  Supabase (Postgres)
    (mobile-framed UI)                  │
-                                       └──►  Gemini 2.5 Flash (google-genai SDK)
+                                       └──►  gpt-4o-mini (openai SDK)
 ```
 - **Frontend:** `frontend/src/App.jsx` — 8 screens (Welcome, Onboard, Reveal,
   Home, Journal, Chat, Mirror, Map; Mirror has intro/observation/integration
   sub-screens), dev user switcher, animated attachment map. Talks to
   `http://127.0.0.1:8000/api`.
 - **Backend:** `backend/app/main.py` — REST API; `ai.py` holds both agents with
-  mock fallbacks when no Gemini key is set; `db.py` is the Supabase client.
-- **AI:** Gemini 2.5 Flash for Therapist responses, journal auto-tagging, and the
+  mock fallbacks when no OpenAI key is set; `db.py` is the Supabase client.
+- **AI:** gpt-4o-mini for Therapist responses, journal auto-tagging, and the
   weekly Mirror observations.
 
 ### Target architecture (Google Cloud alignment)
 The judging criteria **require** Google Cloud, and the Notion vision names Vertex
 AI + Firestore. The migration path:
 
-| Concern            | Current            | Target (GCP)                              |
+| Concern            | Current            | Target (OpenAI Migration)                  |
 |--------------------|--------------------|-------------------------------------------|
-| LLM                | Gemini API key     | **Vertex AI** (Gemini 2.x, project-scoped)|
-| Multi-agent orchestration | manual in `ai.py` | **Vertex AI Managed Agents** (I/O 2026)   |
-| Database           | Supabase Postgres  | **Firestore**                             |
-| Pattern retrieval  | full-history dump  | **Vertex AI Vector Search** (embeddings)  |
-| Voice journaling   | UI stub            | **Gemini multimodal** (prosody + words)   |
-| Monthly map image  | CSS dots           | **Imagen** generated attachment map       |
-| Privacy posture    | —                  | **Confidential Computing** for journal data |
-
-Minimal hackathon move: swap the `google-genai` client to Vertex AI auth against
-`still-tensor-482713-e9` (now that gcloud ADC is set up) so the Google Cloud
-integration is real and not bolted on.
+| LLM                | OpenAI API key     | **OpenAI** (`gpt-4o-mini`)                |
+| Multi-agent orchestration | manual in `ai.py` | OpenAI chat completion system prompts   |
+| Database           | Supabase Postgres  | Supabase Postgres                         |
+| Pattern retrieval  | full-history dump  | Vector Search/Embeddings (future)         |
+| Voice journaling   | UI stub            | **OpenAI TTS/STT**                        |
+| Monthly map image  | CSS dots           | **DALL-E 3 (gpt-image-2)** generated map |
 
 ## 6. Data Model (current)
 
@@ -150,7 +135,7 @@ Jordan/disorganized, Morgan/anxious) — see `test_users.md`.
 **Onboarding (~5 min, functional):** `welcome → onboard → reveal`. The `onboard`
 screen steps through 5 scenario questions (`ONBOARD_QUESTIONS` in `App.jsx`),
 collects free-text answers, and POSTs them to `/api/onboarding/assess`. The
-**assessor agent** (`assess_attachment_style` in `ai.py`, Gemini + mock fallback)
+**assessor agent** (`assess_attachment_style` in `ai.py`, OpenAI + mock fallback)
 infers primary + secondary style, a *named* pattern ("The Pursuer-Protester" —
 the shareable handle), a warm description, a "note from the Mirror" quote, and
 inferred triggers. `reveal` renders the inferred result (falls back to the
@@ -171,7 +156,7 @@ lands / not yet / say more.
 
 `generate_weekly_observations()` in `backend/app/ai.py`:
 1. Compile user's full journal + chat history into a single transcript.
-2. Prompt Gemini as *The Mirror* — analyze linguistic omissions (what/who is
+2. Prompt OpenAI as *The Mirror* — analyze linguistic omissions (what/who is
    NOT said), avoided topics, naming shifts, checking behaviors, self-soothing
    loops, immediate retractions.
 3. Return JSON `[{category, quote, evidence}]`, persisted to `observations`.
@@ -248,15 +233,15 @@ Session flow, feedback loop, 5 test personas. Backend targets Python 3.11.
 **Gaps / next — ordered by hackathon priority:**
 
 *Must-have (criteria-blocking):*
-- [ ] Create `backend/.env` (Supabase + Gemini/Vertex creds) — backend won't boot without it.
-- [ ] Migrate Gemini API → **Vertex AI** on `still-tensor-482713-e9` (real GCP integration — criterion 1).
-- [ ] **Deploy to Cloud Run** and submit the live link (criterion 4). See §12.
+- [x] Create `backend/.env` (Supabase + OpenAI creds) — backend won't boot without it.
+- [x] Migrate Gemini API → **OpenAI** (real API integration).
+- [ ] **Deploy to Cloud Run** and submit the live link. See §12.
 - [ ] Point frontend `API_BASE` at the deployed backend (`App.jsx:11`).
 
 *High-value (innovation / completeness):*
 - [ ] Vertex AI **Managed Agents** for the two-agent orchestration (criterion 2 bonus).
-- [ ] Multimodal: real voice journaling + **Imagen** monthly map (criterion 2 bonus).
-- [x] Onboarding classifies attachment style from answers via `/api/onboarding/assess` (Gemini + mock fallback; backend verified, frontend unrun — no Node locally).
+- [ ] Multimodal: real voice journaling + **DALL-E 3** monthly map.
+- [x] Onboarding classifies attachment style from answers via `/api/onboarding/assess` (OpenAI + mock fallback; backend verified, frontend unrun — no Node locally).
 - [ ] Pre-seed a 30-day journal for the demo.
 
 *Polish / bugs:*

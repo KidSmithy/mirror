@@ -57,6 +57,15 @@ class AssessmentResponse(BaseModel):
     quote: str
     triggers: List[str] = []
 
+class ProfileCreate(BaseModel):
+    id: str
+    name: str
+    email: Optional[str] = None
+    overall_reflection: str
+    attachment_style: str
+    ideal_reflection: Optional[str] = None
+    ideal_image_url: Optional[str] = None
+
 class ProfileResponse(BaseModel):
     id: str
     email: Optional[str] = None

@@ -48,7 +48,7 @@ if a:
 
 # 2. JOURNALING
 line()
-print(" 2. JOURNALING  — entries get auto-tagged by Gemini")
+print(" 2. JOURNALING  — entries get auto-tagged by OpenAI")
 line()
 for e in [
     "Texted him twice and no reply. I keep refreshing.",

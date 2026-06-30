@@ -1,23 +1,23 @@
 import logging
 import json
 import re
-from google import genai
-from google.genai import types
+import os
+from openai import OpenAI
 from app.config import settings
 
 logger = logging.getLogger("mirror-ai")
 
-# Check if Gemini key is set and valid
-use_real_gemini = bool(settings.gemini_api_key and not settings.gemini_api_key.startswith("your-gemini"))
+# Check if OpenAI key is set and valid
+use_real_openai = bool(settings.openai_api_key and not settings.openai_api_key.startswith("your-openai"))
 
 client = None
-if use_real_gemini:
+if use_real_openai:
     try:
-        client = genai.Client(api_key=settings.gemini_api_key)
-        logger.info("Gemini Client initialized successfully.")
+        client = OpenAI(api_key=settings.openai_api_key)
+        logger.info("OpenAI Client initialized successfully.")
     except Exception as e:
-        logger.error(f"Failed to initialize Gemini client: {e}. Falling back to Mock AI.")
-        use_real_gemini = False
+        logger.error(f"Failed to initialize OpenAI client: {e}. Falling back to Mock AI.")
+        use_real_openai = False
 
 # Shared trauma-informed guardrail prepended to every specialist's system prompt.
 _SAFETY_PREAMBLE = (
@@ -79,7 +79,7 @@ _SPECIALIST_PROMPTS = {
     ),
 }
 
-# Mock replies per specialist, used when no Gemini key is configured.
+# Mock replies per specialist, used when no OpenAI key is configured.
 _MOCK_SPECIALIST_REPLIES = {
     "anxiety": "Anxiety often races ahead of the facts. *What is the worry trying to warn you about right now?*",
     "depression": "That heaviness is real, and naming it takes strength. *What is one small thing that used to feel like yours?*",
@@ -89,12 +89,12 @@ _MOCK_SPECIALIST_REPLIES = {
 }
 
 
-def generate_therapist_response(history: list, topic: str = "general") -> str:
+def generate_therapist_response(history: list, topic: str = "general", user_name: str = "User") -> str:
     """
     Generates a warm, Socratic, attachment-informed response.
     History is a list of dicts: [{'sender': 'me'/'them', 'message': '...'}]
     """
-    if not use_real_gemini:
+    if not use_real_openai:
         if not history:
             return "What's on your mind?"
         last_msg = history[-1]['message'].lower()
@@ -143,6 +143,8 @@ def generate_therapist_response(history: list, topic: str = "general") -> str:
         system_instruction = _SAFETY_PREAMBLE + " " + _SPECIALIST_PROMPTS.get(topic, _SPECIALIST_PROMPTS["general"])
 
         prompt = f"""
+        The user's name is {user_name}. Feel free to occasionally address them by their name when giving insights.
+        
         Below is the chat history between the User and The Therapist.
         Generate the next Therapist response following your core instructions.
         
@@ -150,24 +152,25 @@ def generate_therapist_response(history: list, topic: str = "general") -> str:
         {chat_transcript}
         """
 
-        response = client.models.generate_content(
-            model='gemini-2.5-flash',
-            contents=prompt,
-            config=types.GenerateContentConfig(
-                system_instruction=system_instruction,
-                temperature=0.7,
-            )
+        response = client.chat.completions.create(
+            model='gpt-4o-mini',
+            messages=[
+                {"role": "system", "content": system_instruction},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.7,
         )
-        return response.text.strip()
+        return response.choices[0].message.content.strip()
     except Exception as e:
-        logger.error(f"Gemini API error during therapist chat: {e}")
+        logger.error(f"OpenAI API error during therapist chat: {e}")
         return "I hear you, and it makes sense why that would feel heavy. *What do you think is trying to be protected in this moment?*"
+
 
 def generate_journal_tags(content: str) -> list:
     """
     Analyzes journal text and returns 2-3 attachment-related hashtags.
     """
-    if not use_real_gemini:
+    if not use_real_openai:
         # Simulated auto-tagging
         content_lower = content.lower()
         tags = []
@@ -189,22 +192,24 @@ def generate_journal_tags(content: str) -> list:
         prompt = f"""
         Analyze the following journal entry text and extract exactly 2 relevant psychological hashtags representing attachment patterns, defense mechanisms, or core emotional themes (e.g. #anxious-spiral, #avoidance, #core-fear, #reassurance-seeking, #family-distance, #boundary-setting).
         
-        Format your response as a JSON array of strings containing ONLY the hashtags.
-        Example output: ["#anxious-spiral", "#family-distance"]
+        Format your response as a JSON object containing a key 'tags' whose value is a list of exactly 2 hashtags.
+        Example output: {{\"tags\": [\"#anxious-spiral\", \"#family-distance\"]}}
 
         Journal entry:
-        "{content}"
+        \"{content}\"
         """
 
-        response = client.models.generate_content(
-            model='gemini-2.5-flash',
-            contents=prompt,
-            config=types.GenerateContentConfig(
-                response_mime_type="application/json",
-                temperature=0.2,
-            )
+        response = client.chat.completions.create(
+            model='gpt-4o-mini',
+            response_format={"type": "json_object"},
+            messages=[
+                {"role": "system", "content": "You are a psychological tag generator. You must respond with a JSON object containing a key 'tags' which is a list of exactly 2 relevant psychological hashtags."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.2,
         )
-        tags = json.loads(response.text.strip())
+        data = json.loads(response.choices[0].message.content.strip())
+        tags = data.get("tags", [])
         if isinstance(tags, list):
             # Clean and add auto-tagged flag
             cleaned_tags = [t if t.startswith("#") else f"#{t}" for t in tags[:2]]
@@ -212,8 +217,9 @@ def generate_journal_tags(content: str) -> list:
             return cleaned_tags
         return ["#reflection", "— auto-tagged"]
     except Exception as e:
-        logger.error(f"Gemini API error during tag generation: {e}")
+        logger.error(f"OpenAI API error during tag generation: {e}")
         return ["#reflection", "— auto-tagged"]
+
 
 def generate_weekly_observations(journals: list, chats: list) -> list:
     """
@@ -236,7 +242,7 @@ def generate_weekly_observations(journals: list, chats: list) -> list:
             date_str = c.get('created_at', 'Unknown Date')
             history_text += f"Message #{idx+1} ({date_str}): {c.get('message')}\n"
 
-    if not use_real_gemini:
+    if not use_real_openai:
         # Fallback to smart generated mock observations if no API key is provided
         # We search user history for matching keywords
         all_text = (history_text).lower()
@@ -265,51 +271,50 @@ def generate_weekly_observations(journals: list, chats: list) -> list:
         system_instruction = (
             "You are The Mirror, the unconscious layer of the self. Your job is to analyze the user's journals and chat history to surface ONE or TWO weekly, uncomfortable, but deeply evidence-based observations that they keep avoiding. "
             "Analyze linguistic omissions (what/who is NOT said), avoided topics, shifts in naming, repeated avoidances, checking behaviors, self-soothing loops, and immediate retractions. "
-            "Your output must be objective, direct, compassionate but unflinchingly honest, and backed up with evidence."
+            "Your output must be objective, direct, compassionate but unflinchingly honest, and backed up with evidence. "
+            "You must return a JSON object with an 'observations' key containing a list of observation objects."
         )
 
         prompt = f"""
-        Below is the user's complete writing history. Generate exactly 2 weekly observations in a JSON list structure:
-        [
-          {{
-            "category": "String (e.g. 'distance', 'checking', 'omission')",
-            "quote": "String (A direct, slightly uncomfortable, Socratic quote addressed to the user. Start with 'You...', e.g. 'You've written about your mother 14 times this month, but always refer to her as \"my mother\" instead of \"mom\". What does that distance protect?')",
-            "evidence": "String (A concise summary of database logs, mentioning counts, dates, or specific naming shifts, e.g. '14 mentions across journal entries from June 3-25. The naming shift occurred after March 14.')"
-          }}
-        ]
-
-        Do not wrap in markdown boxes; output raw JSON only.
+        Below is the user's complete writing history. Generate exactly 2 weekly observations.
+        
+        The returned JSON object must match this structure:
+        {{
+          "observations": [
+            {{
+              "category": "String (e.g. 'distance', 'checking', 'omission')",
+              "quote": "String (A direct, slightly uncomfortable, Socratic quote addressed to the user. Start with 'You...', e.g. 'You've written about your mother 14 times this month, but always refer to her as \"my mother\" instead of \"mom\". What does that distance protect?')",
+              "evidence": "String (A concise summary of database logs, mentioning counts, dates, or specific naming shifts, e.g. '14 mentions across journal entries from June 3-25. The naming shift occurred after March 14.')"
+            }}
+          ]
+        }}
 
         User History:
         {history_text}
         """
 
-        response = client.models.generate_content(
-            model='gemini-2.5-flash',
-            contents=prompt,
-            config=types.GenerateContentConfig(
-                system_instruction=system_instruction,
-                response_mime_type="application/json",
-                temperature=0.3,
-            )
+        response = client.chat.completions.create(
+            model='gpt-4o-mini',
+            response_format={"type": "json_object"},
+            messages=[
+                {"role": "system", "content": system_instruction},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.3,
         )
         
-        # Parse JSON list
-        raw_json = response.text.strip()
-        # Clean up any potential markdown wraps
-        if raw_json.startswith("```"):
-            raw_json = re.sub(r"^```json\s*", "", raw_json)
-            raw_json = re.sub(r"\s*```$", "", raw_json)
-        
-        observations = json.loads(raw_json)
+        raw_json = response.choices[0].message.content.strip()
+        data = json.loads(raw_json)
+        observations = data.get("observations", [])
         if isinstance(observations, list):
             return observations
         return []
     except Exception as e:
-        logger.error(f"Gemini API error during Mirror observation generation: {e}")
+        logger.error(f"OpenAI API error during Mirror observation generation: {e}")
         return []
 
-# Mock copy keyed by style, used when no Gemini key is configured.
+
+# Mock copy keyed by style, used when no OpenAI key is configured.
 _MOCK_STYLE_PROFILES = {
     "Anxious": {
         "pattern_name": "The Pursuer-Protester",
@@ -337,6 +342,7 @@ _MOCK_STYLE_PROFILES = {
     },
 }
 
+
 def assess_attachment_style(answers: list) -> dict:
     """
     Onboarding assessor. Infers attachment style from free-text scenario answers.
@@ -344,7 +350,7 @@ def assess_attachment_style(answers: list) -> dict:
     """
     answers_text = "\n".join(f"Q{i+1}: {a}" for i, a in enumerate(answers) if a and a.strip())
 
-    if not use_real_gemini:
+    if not use_real_openai:
         text = answers_text.lower()
         scores = {"Anxious": 0, "Avoidant": 0, "Secure": 0}
         keywords = {
@@ -380,14 +386,15 @@ def assess_attachment_style(answers: list) -> dict:
         system_instruction = (
             "You are the onboarding assessor for Mirror, an attachment-style companion. "
             "Given a user's free-text answers to scenario questions, infer their attachment style. "
-            "Be warm, specific, and ground your read in their actual words. Never diagnose; this is self-inquiry."
+            "Be warm, specific, and ground your read in their actual words. Never diagnose; this is self-inquiry. "
+            "You must return a JSON object matching the requested schema."
         )
         prompt = f"""
         Analyze these onboarding answers and classify the user's attachment style.
 
         {answers_text}
 
-        Return raw JSON only (no markdown fences):
+        Return a JSON object with this schema:
         {{
           "primary_style": "Anxious | Avoidant | Secure | Disorganized",
           "secondary_style": "one of the above, or null",
@@ -397,32 +404,30 @@ def assess_attachment_style(answers: list) -> dict:
           "triggers": ["3 short trigger phrases inferred from their answers"]
         }}
         """
-        response = client.models.generate_content(
-            model='gemini-2.5-flash',
-            contents=prompt,
-            config=types.GenerateContentConfig(
-                system_instruction=system_instruction,
-                response_mime_type="application/json",
-                temperature=0.4,
-            )
+        response = client.chat.completions.create(
+            model='gpt-4o-mini',
+            response_format={"type": "json_object"},
+            messages=[
+                {"role": "system", "content": system_instruction},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.4,
         )
-        raw_json = response.text.strip()
-        if raw_json.startswith("```"):
-            raw_json = re.sub(r"^```json\s*", "", raw_json)
-            raw_json = re.sub(r"\s*```$", "", raw_json)
+        raw_json = response.choices[0].message.content.strip()
         result = json.loads(raw_json)
         result.setdefault("secondary_style", None)
         result.setdefault("triggers", [])
         return result
     except Exception as e:
-        logger.error(f"Gemini API error during attachment assessment: {e}")
+        logger.error(f"OpenAI API error during attachment assessment: {e}")
         return {"primary_style": "Anxious", "secondary_style": None, **_MOCK_STYLE_PROFILES["Anxious"]}
+
 
 def generate_mirror_reflection_update(user_message: str, current_reflection: str, current_ideal: str, attachment_style: str) -> dict:
     """
     Generates an updated reflection, ideal self reflection, and insight based on user's direct conversation with the mirror.
     """
-    if not use_real_gemini:
+    if not use_real_openai:
         # Smart dynamic naming based on message keywords in mock mode
         msg_lower = user_message.lower()
         if any(w in msg_lower for w in ["mother", "father", "parent", "family"]):
@@ -446,21 +451,23 @@ def generate_mirror_reflection_update(user_message: str, current_reflection: str
         }
 
     try:
+        system_instruction = (
+            "You are the Looking Glass, a mirror of the user's psyche and attachment style. "
+            "The user is talking directly to their mirror reflection. "
+            "You must return a JSON object matching the requested schema."
+        )
         prompt = f"""
-        You are the Looking Glass, a mirror of the user's psyche and attachment style.
-        The user is talking directly to their mirror reflection.
-        
         Current Reflection of the User:
-        "{current_reflection}"
+        \"{current_reflection}\"
         
         Current Ideal Reflection (Vision of growth/security):
-        "{current_ideal}"
+        \"{current_ideal}\"
         
         User's Attachment Style:
         {attachment_style}
         
         User's Message to the Mirror:
-        "{user_message}"
+        \"{user_message}\"
         
         Task:
         1. Formulate an updated Overall Reflection that incorporates their new insight/message, showing how their current self-pattern is shifting.
@@ -477,25 +484,17 @@ def generate_mirror_reflection_update(user_message: str, current_reflection: str
         }}
         """
 
-        response = client.models.generate_content(
-            model='gemini-2.5-flash',
-            contents=prompt,
-            config=types.GenerateContentConfig(
-                response_mime_type="application/json",
-                response_schema=types.Schema(
-                    type=types.Type.OBJECT,
-                    properties={
-                        "overall_reflection": types.Schema(type=types.Type.STRING),
-                        "ideal_reflection": types.Schema(type=types.Type.STRING),
-                        "attachment_style": types.Schema(type=types.Type.STRING),
-                        "insight": types.Schema(type=types.Type.STRING),
-                    },
-                    required=["overall_reflection", "ideal_reflection", "attachment_style", "insight"]
-                )
-            )
+        response = client.chat.completions.create(
+            model='gpt-4o-mini',
+            response_format={"type": "json_object"},
+            messages=[
+                {"role": "system", "content": system_instruction},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.4,
         )
         
-        return json.loads(response.text)
+        return json.loads(response.choices[0].message.content.strip())
     except Exception as e:
         logger.error(f"Failed to generate mirror update: {e}")
         return {
@@ -504,3 +503,38 @@ def generate_mirror_reflection_update(user_message: str, current_reflection: str
             "attachment_style": attachment_style,
             "insight": f"Attuned: {user_message[:30]}"
         }
+
+
+def generate_reflection_image(prompt_text: str) -> str:
+    """
+    Generates a reflection image based on prompt using OpenAI images API.
+    Saves the image locally and returns the relative path URL.
+    """
+    if not use_real_openai:
+        raise Exception("Real OpenAI client is not initialized.")
+
+    import base64
+    import uuid
+    
+    artistic_prompt = f"A beautiful Ghibli-style anime illustration showing: {prompt_text}"
+    
+    result = client.images.generate(
+        model="gpt-image-2",
+        prompt=artistic_prompt,
+        response_format="b64_json"
+    )
+    
+    image_base64 = result.data[0].b64_json
+    image_bytes = base64.b64decode(image_base64)
+    
+    generated_images_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "generated_images"))
+    os.makedirs(generated_images_dir, exist_ok=True)
+    
+    filename = f"reflection_{uuid.uuid4().hex}.png"
+    file_path = os.path.join(generated_images_dir, filename)
+    
+    with open(file_path, "wb") as f:
+        f.write(image_bytes)
+        
+    logger.info(f"Dynamically generated reflection image saved: {file_path}")
+    return f"/generated_images/{filename}"

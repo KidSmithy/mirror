@@ -7,7 +7,7 @@ from datetime import datetime, date
 from typing import List, Optional
 
 logger = logging.getLogger("mirror-app")
-from fastapi import FastAPI, Header, HTTPException, status
+from fastapi import FastAPI, Header, HTTPException, status, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -19,7 +19,7 @@ from app.models import (
     ChatCreate, ChatResponse,
     ObservationFeedback, ObservationResponse,
     AttachmentMapResponse, OnboardingAssess, AssessmentResponse,
-    ProfileResponse, ReflectionResponse
+    ProfileCreate, ProfileResponse, ReflectionResponse
 )
 from app.ai import (
     generate_therapist_response,
@@ -27,9 +27,9 @@ from app.ai import (
     generate_weekly_observations,
     assess_attachment_style,
     generate_mirror_reflection_update,
+    generate_reflection_image,
     client,
-    types,
-    use_real_gemini
+    use_real_openai
 )
 
 logger = logging.getLogger("mirror")
@@ -105,6 +105,62 @@ def get_profile(user_id: str = Header(None, alias="x-user-id")):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Database error: {e}")
 
+def generate_and_update_onboarding_image(user_id: str, profile_name: str, attachment_style: str, overall_reflection: str, reflection_id: str):
+    prompt_text = f"An attachment-style reflection. Style: {attachment_style}. Theme: {overall_reflection[:100]}"
+    try:
+        image_url = generate_reflection_image(prompt_text)
+        # Update reflections table
+        supabase_client.table("reflections").update({"image_url": image_url}).eq("id", reflection_id).execute()
+        # Also update profiles table
+        supabase_client.table("profiles").update({"ideal_image_url": image_url}).eq("id", user_id).execute()
+        logger.info(f"Successfully generated and updated onboarding image for user {user_id}")
+    except Exception as e:
+        logger.error(f"Failed to generate and store onboarding image: {e}")
+
+@app.post("/api/profile", response_model=ProfileResponse)
+def create_profile(profile: ProfileCreate, background_tasks: BackgroundTasks):
+    new_profile = {
+        "id": profile.id,
+        "name": profile.name,
+        "email": profile.email,
+        "overall_reflection": profile.overall_reflection,
+        "attachment_style": profile.attachment_style,
+        "ideal_reflection": profile.ideal_reflection or "Your ideal self is secure and anchored. You communicate your boundaries clearly and trust that you are worthy of love without constant performance.",
+        "ideal_image_url": profile.ideal_image_url or "https://uqsflvuuhbxkgmrydvdd.supabase.co/storage/v1/object/public/reflections/enkh_ideal.png"
+    }
+    try:
+        response = supabase_client.table("profiles").insert(new_profile).execute()
+        if not response.data:
+            raise HTTPException(status_code=500, detail="Failed to create profile.")
+        
+        # Insert initial reflection record for current self view
+        reflection_id = str(uuid.uuid4())
+        created_at_str = datetime.utcnow().isoformat() + "Z"
+        supabase_client.table("reflections").insert({
+            "id": reflection_id,
+            "user_id": profile.id,
+            "created_at": created_at_str,
+            "overall_reflection": profile.overall_reflection,
+            "attachment_style": profile.attachment_style,
+            "insight": f"Initial assessment: {profile.attachment_style}",
+            "image_url": None  # Will be generated asynchronously
+        }).execute()
+        
+        # Queue image generation in background task
+        background_tasks.add_task(
+            generate_and_update_onboarding_image,
+            user_id=profile.id,
+            profile_name=profile.name,
+            attachment_style=profile.attachment_style,
+            overall_reflection=profile.overall_reflection,
+            reflection_id=reflection_id
+        )
+        
+        return response.data[0]
+    except Exception as e:
+        logger.error(f"Failed to insert profile: {e}")
+        raise HTTPException(status_code=500, detail=f"Database error: {e}")
+
 from fastapi.responses import Response
 
 @app.get("/api/reflections", response_model=List[ReflectionResponse])
@@ -116,6 +172,16 @@ def get_reflections(user_id: str = Header(None, alias="x-user-id")):
             return response.data
             
         # Fallback timeline reflections for mock client
+        test_user_ids = {
+            "e1a8b9c8-1234-5678-abcd-ef0123456789",
+            "f2b9c0d1-2345-6789-bcde-f0123456789a",
+            "a3c0d1e2-3456-7890-cdef-0123456789ab",
+            "b4d1e2f3-4567-8901-def0-123456789abc",
+            "c5e2f3a4-5678-9012-ef01-23456789abcd"
+        }
+        if uid not in test_user_ids:
+            return []
+
         mock_timeline = [
             {
                 "id": "11111111-2222-3333-4444-555555555551",
@@ -155,38 +221,23 @@ def generate_tts(data: dict):
     if not text:
         raise HTTPException(status_code=400, detail="Text is required")
         
-    if not use_real_gemini:
-        raise HTTPException(status_code=500, detail="Real Gemini client is not initialized.")
+    if not use_real_openai:
+        raise HTTPException(status_code=500, detail="Real OpenAI client is not initialized.")
 
     try:
-        response = client.models.generate_content(
-            model='gemini-2.0-flash',
-            contents=f"Read the following self-reflection aloud with a calm, gentle, therapeutic voice: {text}",
-            config=types.GenerateContentConfig(
-                response_modalities=["AUDIO"],
-                speech_config=types.SpeechConfig(
-                    voice_config=types.VoiceConfig(
-                        prebuilt_voice_config=types.PrebuiltVoiceConfig(
-                            voice_name="Aoede"
-                        )
-                    )
-                )
-            )
+        response = client.audio.speech.create(
+            model="tts-1",
+            voice="shimmer",
+            input=text,
         )
         
-        audio_bytes = None
-        for candidate in response.candidates:
-            for part in candidate.content.parts:
-                if part.inline_data and part.inline_data.mime_type.startswith("audio/"):
-                    audio_bytes = part.inline_data.data
-                    break
-                    
+        audio_bytes = response.content
         if audio_bytes:
             return Response(content=audio_bytes, media_type="audio/mp3")
             
-        raise HTTPException(status_code=500, detail="No audio returned from Gemini")
+        raise HTTPException(status_code=500, detail="No audio returned from OpenAI")
     except Exception as e:
-        logger.error(f"Gemini TTS error: {e}")
+        logger.error(f"OpenAI TTS error: {e}")
         raise HTTPException(status_code=500, detail=f"TTS generation failed: {e}")
 
 
@@ -208,7 +259,7 @@ def interact_with_mirror(data: dict, user_id: str = Header(None, alias="x-user-i
         current_ideal = profile.get("ideal_reflection") or ""
         attachment_style = profile.get("attachment_style") or "Secure"
         
-        # 2. Call Gemini to generate the updated reflection & ideal self
+        # 2. Call OpenAI to generate the updated reflection & ideal self
         update = generate_mirror_reflection_update(
             user_message=message,
             current_reflection=current_reflection,
@@ -227,28 +278,9 @@ def interact_with_mirror(data: dict, user_id: str = Header(None, alias="x-user-i
             "attachment_style": new_style
         }).eq("id", uid).execute()
         
-        # 4. Use 10 pre-generated Ghibli images from Supabase storage
-        STATIC_REFLECTIONS_IMAGES = [
-            "https://uqsflvuuhbxkgmrydvdd.supabase.co/storage/v1/object/public/reflections/static_ghibli_calm.png",
-            "https://uqsflvuuhbxkgmrydvdd.supabase.co/storage/v1/object/public/reflections/static_ghibli_resilient.png",
-            "https://uqsflvuuhbxkgmrydvdd.supabase.co/storage/v1/object/public/reflections/static_ghibli_reflective.png",
-            "https://uqsflvuuhbxkgmrydvdd.supabase.co/storage/v1/object/public/reflections/static_ghibli_hopeful.png",
-            "https://uqsflvuuhbxkgmrydvdd.supabase.co/storage/v1/object/public/reflections/static_ghibli_peaceful.png",
-            "https://uqsflvuuhbxkgmrydvdd.supabase.co/storage/v1/object/public/reflections/static_ghibli_courageous.png",
-            "https://uqsflvuuhbxkgmrydvdd.supabase.co/storage/v1/object/public/reflections/static_ghibli_gentle.png",
-            "https://uqsflvuuhbxkgmrydvdd.supabase.co/storage/v1/object/public/reflections/static_ghibli_secure.png",
-            "https://uqsflvuuhbxkgmrydvdd.supabase.co/storage/v1/object/public/reflections/static_ghibli_mindful.png",
-            "https://uqsflvuuhbxkgmrydvdd.supabase.co/storage/v1/object/public/reflections/static_ghibli_joyful.png"
-        ]
-        
-        # Get count of current reflections in database to pick sequential index
-        try:
-            count_res = supabase_client.table("reflections").select("id", count="exact").eq("user_id", uid).execute()
-            current_count = count_res.count or len(count_res.data or [])
-        except Exception:
-            current_count = 0
-            
-        image_url = STATIC_REFLECTIONS_IMAGES[current_count % len(STATIC_REFLECTIONS_IMAGES)]
+        # 4. Generate dynamic reflection image based on style and overall reflection
+        prompt_text = f"An attachment-style reflection. Style: {new_style}. Theme: {new_overall[:100]}"
+        image_url = generate_reflection_image(prompt_text)
 
         new_ref_id = str(uuid.uuid4())
         created_at_str = datetime.utcnow().isoformat() + "Z"
@@ -289,7 +321,7 @@ def get_journals(user_id: str = Header(None, alias="x-user-id")):
 def create_journal(journal: JournalCreate, user_id: str = Header(None, alias="x-user-id")):
     uid = get_current_user_id(user_id)
     
-    # 1. Call Gemini to analyze the journal content and extract hashtags
+    # 1. Call OpenAI to analyze the journal content and extract hashtags
     tags = generate_journal_tags(journal.content)
     
     # 2. Prepare database record
@@ -367,8 +399,17 @@ def create_chat(chat: ChatCreate, user_id: str = Header(None, alias="x-user-id")
         history_response = supabase_client.table("chats").select("*").eq("user_id", uid).eq("topic", chat.topic).order("created_at", desc=False).execute()
         chat_history = history_response.data
         
-        # 3. Call Gemini to generate the Socratic Therapist response
-        therapist_reply_text = generate_therapist_response(chat_history, topic=chat.topic)
+        # Fetch user's name for therapist personalization
+        user_name = "User"
+        try:
+            prof_res = supabase_client.table("profiles").select("name").eq("id", uid).execute()
+            if prof_res.data:
+                user_name = prof_res.data[0].get("name", "User")
+        except Exception as e:
+            logger.error(f"Error fetching user name for chat personalization: {e}")
+
+        # 3. Call OpenAI to generate the Socratic Therapist response
+        therapist_reply_text = generate_therapist_response(chat_history, topic=chat.topic, user_name=user_name)
         
         # 4. Save Therapist's message to database
         therapist_message = {
@@ -417,7 +458,7 @@ def submit_observation_feedback(obs_id: str, feedback_data: ObservationFeedback,
 @app.post("/api/observations/generate", response_model=List[ObservationResponse])
 def generate_mirror_observations(user_id: str = Header(None, alias="x-user-id")):
     """
-    Trigger the weekly Mirror pipeline: analyzes all user's writing (journals + chats) using Gemini
+    Trigger the weekly Mirror pipeline: analyzes all user's writing (journals + chats) using OpenAI
     and writes newly generated observations to the database.
     """
     uid = get_current_user_id(user_id)
@@ -486,7 +527,28 @@ def get_attachment_map(user_id: str = Header(None, alias="x-user-id")):
             "c5e2f3a4-5678-9012-ef01-23456789abcd": {"anxious_count": 14, "avoidant_count": 8, "secure_count": 15},  # Morgan
         }
         
-        defaults = default_maps.get(uid, {"anxious_count": 10, "avoidant_count": 10, "secure_count": 10})
+        if uid in default_maps:
+            defaults = default_maps[uid]
+        else:
+            try:
+                profile_res = supabase_client.table("profiles").select("attachment_style").eq("id", uid).execute()
+                style = profile_res.data[0].get("attachment_style", "Secure") if profile_res.data else "Secure"
+            except Exception:
+                style = "Secure"
+            
+            anxious, avoidant, secure = 10, 10, 10
+            style_lower = style.lower()
+            if "anxious" in style_lower:
+                anxious, avoidant, secure = 15, 5, 10
+            elif "avoid" in style_lower:
+                anxious, avoidant, secure = 5, 15, 10
+            elif "disorganized" in style_lower or "fearful" in style_lower:
+                anxious, avoidant, secure = 12, 12, 6
+            elif "secure" in style_lower:
+                anxious, avoidant, secure = 5, 5, 20
+                
+            defaults = {"anxious_count": anxious, "avoidant_count": avoidant, "secure_count": secure}
+            
         new_map = {
             "user_id": uid,
             "date": date.today().isoformat(),
@@ -533,6 +595,11 @@ def update_attachment_map_counts(user_id: str, tags: List[str]):
 local_dist_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "frontend", "dist"))
 container_dist_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "frontend", "dist"))
 frontend_dist_path = container_dist_path if os.path.exists(container_dist_path) else local_dist_path
+
+# Mount generated_images folder
+generated_images_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "generated_images"))
+os.makedirs(generated_images_dir, exist_ok=True)
+app.mount("/generated_images", StaticFiles(directory=generated_images_dir), name="generated_images")
 
 # Mount assets folder
 assets_path = os.path.join(frontend_dist_path, "assets")

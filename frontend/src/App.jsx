@@ -12,6 +12,15 @@ const API_BASE = import.meta.env.DEV
   ? 'http://127.0.0.1:8000/api' 
   : '/api';
 
+const getFullImageUrl = (url) => {
+  if (!url) return "";
+  if (url.startsWith("http://") || url.startsWith("https://")) {
+    return url;
+  }
+  const backendHost = API_BASE.endsWith('/api') ? API_BASE.slice(0, -4) : API_BASE;
+  return `${backendHost}${url}`;
+};
+
 // List of test users matching backend/test_users.md
 const TEST_USERS = [
   { name: 'Enkh', id: 'e1a8b9c8-1234-5678-abcd-ef0123456789', pattern: 'Anxious-leaning' },
@@ -79,7 +88,15 @@ const QUICK_REPLIES = [
 
 export default function App() {
   // Developer user switcher state
-  const [currentUser, setCurrentUser] = useState(TEST_USERS[0]);
+  const [currentUser, setCurrentUser] = useState(() => {
+    const savedId = localStorage.getItem('mirror_user_id');
+    const savedName = localStorage.getItem('mirror_user_name');
+    if (savedId && savedName) {
+      return { id: savedId, name: savedName, pattern: localStorage.getItem('mirror_user_pattern') || 'Secure' };
+    }
+    return { id: 'temp-placeholder-id', name: 'Guest', pattern: 'Secure' };
+  });
+  const [userNameInput, setUserNameInput] = useState(() => localStorage.getItem('mirror_user_name') || '');
   const [screen, setScreen] = useState('welcome'); // 'welcome' | 'onboard' | 'reveal' | 'home' | 'journal' | 'chat' | 'mirror' | 'map'
   
   // Data states
@@ -131,8 +148,21 @@ export default function App() {
 
   // Load user data whenever current user changes
   useEffect(() => {
-    fetchUserData();
+    if (currentUser && currentUser.id !== 'temp-placeholder-id') {
+      fetchUserData();
+    }
   }, [currentUser]);
+
+  // Handle initial screen routing on mount
+  useEffect(() => {
+    const savedId = localStorage.getItem('mirror_user_id');
+    const savedName = localStorage.getItem('mirror_user_name');
+    if (savedId && savedName) {
+      setScreen('home');
+    } else {
+      setScreen('welcome');
+    }
+  }, []);
 
   // Scroll to bottom of chat when new messages arrive
   useEffect(() => {
@@ -140,6 +170,49 @@ export default function App() {
       chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [chats, isTyping]);
+
+  // Poll reflections and profile if images are still generating in background
+  useEffect(() => {
+    if (!currentUser || currentUser.id === 'temp-placeholder-id') return;
+
+    const needsReflectionPoll = timeline.length > 0 && !timeline[0].image_url;
+    const needsProfilePoll = profile && !profile.ideal_image_url;
+
+    if (!needsReflectionPoll && !needsProfilePoll) return;
+
+    const intervalId = setInterval(async () => {
+      const headers = { 'x-user-id': currentUser.id };
+      try {
+        const promises = [];
+        if (needsReflectionPoll) {
+          promises.push(axios.get(`${API_BASE}/reflections`, { headers }));
+        }
+        if (needsProfilePoll) {
+          promises.push(axios.get(`${API_BASE}/profile`, { headers }));
+        }
+
+        const results = await Promise.all(promises);
+
+        let resIndex = 0;
+        if (needsReflectionPoll) {
+          const reflectionsRes = results[resIndex++];
+          if (reflectionsRes.data && reflectionsRes.data.length > 0) {
+            setTimeline(reflectionsRes.data);
+          }
+        }
+        if (needsProfilePoll) {
+          const profileRes = results[resIndex++];
+          if (profileRes.data) {
+            setProfile(profileRes.data);
+          }
+        }
+      } catch (err) {
+        console.error("Error polling reflections/profile:", err);
+      }
+    }, 3000);
+
+    return () => clearInterval(intervalId);
+  }, [currentUser, timeline, profile]);
 
   const fetchUserData = async () => {
     setLoading(true);
@@ -165,20 +238,6 @@ export default function App() {
       console.error("Error loading user data from backend:", err);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleUserChange = (e) => {
-    const selected = TEST_USERS.find(u => u.id === e.target.value);
-    if (selected) {
-      setCurrentUser(selected);
-      // Reset temporary states
-      setJournalInput('');
-      setIsRecording(false);
-      setSavedJournalTags([]);
-      setChatInput('');
-      setActiveTopic('general');
-      setScreen('home'); // Send to home on user switch
     }
   };
 
@@ -317,6 +376,7 @@ export default function App() {
   };
 
   const startOnboarding = () => {
+    if (!userNameInput.trim()) return;
     setOnboardStep(0);
     setOnboardAnswers([]);
     setOnboardChoice(null);
@@ -350,6 +410,30 @@ export default function App() {
         { answers: updatedAnswers },
         { headers: { 'x-user-id': currentUser.id } }
       );
+
+      const newUserId = crypto.randomUUID();
+      const userName = userNameInput.trim() || 'Guest';
+      
+      // Register new user profile in Supabase
+      await axios.post(`${API_BASE}/profile`, {
+        id: newUserId,
+        name: userName,
+        overall_reflection: res.data.description,
+        attachment_style: res.data.primary_style
+      });
+
+      // Save user session in localStorage
+      localStorage.setItem('mirror_user_id', newUserId);
+      localStorage.setItem('mirror_user_name', userName);
+      localStorage.setItem('mirror_user_pattern', res.data.primary_style);
+
+      // Set current user so app loads with the new ID
+      setCurrentUser({
+        id: newUserId,
+        name: userName,
+        pattern: res.data.primary_style
+      });
+
       setAssessment(res.data);
     } catch (err) {
       console.error("Error assessing onboarding:", err);
@@ -412,7 +496,7 @@ export default function App() {
       audio.onended = () => setTtsPlaying(false);
       audio.play();
     } catch (err) {
-      console.error("Gemini TTS playback failed:", err);
+      console.error("OpenAI TTS playback failed:", err);
       setTtsPlaying(false);
     }
   };
@@ -528,29 +612,13 @@ export default function App() {
   return (
     <>
       <div className="stage">
-        {/* Sleek developer account switcher */}
-        <div className="dev-switcher">
-          <div className="flex flex-col">
-            <span className="text-[9px] uppercase tracking-wider text-white/50 font-bold">
-              Developer Selector
-            </span>
-            <span className="text-xs text-[#E8B89A] font-semibold">{currentUser.pattern}</span>
-          </div>
-          <select 
-            value={currentUser.id} 
-            onChange={handleUserChange}
-          >
-            {TEST_USERS.map(u => (
-              <option key={u.id} value={u.id}>{u.name} ({u.pattern})</option>
-            ))}
-          </select>
-        </div>
+
 
         {/* Brand bar above the phone */}
         <div className="brand-bar">
           <span className="brand-dot"></span>
           <span className="brand-name">Mirror</span>
-          <span className="brand-tag">AI for self-inquiry · Built on Gemini</span>
+          <span className="brand-tag">AI for self-inquiry · Powered by OpenAI</span>
         </div>
 
         {/* High-fidelity Phone Frame */}
@@ -577,8 +645,30 @@ export default function App() {
                 <div className="welcome-body">
                   <div className="orb-large"></div>
                   <div className="welcome-title">Begin<br/><em>gently</em>.</div>
-                  <p className="welcome-sub">Mirror learns who you are through stories, not questions.</p>
-                  <button className="cta" onClick={startOnboarding}>I'm ready →</button>
+                  <p className="welcome-sub" style={{ marginBottom: 24 }}>
+                    Mirror learns who you are through stories, not questions.
+                  </p>
+                  
+                  <div className="welcome-input-wrap">
+                    <label className="welcome-input-label">
+                      What should I call you?
+                    </label>
+                    <input
+                      type="text"
+                      value={userNameInput}
+                      onChange={(e) => setUserNameInput(e.target.value)}
+                      placeholder="Enter your name"
+                      className="welcome-input"
+                    />
+                  </div>
+
+                  <button 
+                    className="cta" 
+                    onClick={startOnboarding}
+                    disabled={!userNameInput.trim()}
+                  >
+                    I'm ready →
+                  </button>
                   <div className="welcome-meta">Takes about 5 minutes</div>
                 </div>
               </div>
@@ -1099,19 +1189,27 @@ export default function App() {
                           </button>
                         </div>
 
-                        <div className="portrait-container">
+                        <div className="portrait-container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                           {activeReflectionTab === 'current' ? (
-                            <img 
-                              src={timeline[0]?.image_url || "https://uqsflvuuhbxkgmrydvdd.supabase.co/storage/v1/object/public/reflections/enkh_june27.png"} 
-                              className="orb-portrait animate-pulse-slow" 
-                              alt="Current Ghibli Reflection" 
-                            />
+                            timeline.length > 0 && !timeline[0]?.image_url ? (
+                              <div className="orb-portrait-loading"></div>
+                            ) : (
+                              <img 
+                                src={getFullImageUrl(timeline[0]?.image_url) || "https://uqsflvuuhbxkgmrydvdd.supabase.co/storage/v1/object/public/reflections/enkh_june27.png"} 
+                                className="orb-portrait animate-pulse-slow" 
+                                alt="Current Ghibli Reflection" 
+                              />
+                            )
                           ) : (
-                            <img 
-                              src={profile?.ideal_image_url || "https://uqsflvuuhbxkgmrydvdd.supabase.co/storage/v1/object/public/reflections/enkh_ideal.png"} 
-                              className="orb-portrait animate-pulse-slow" 
-                              alt="Ideal Ghibli Reflection" 
-                            />
+                            profile && !profile?.ideal_image_url ? (
+                              <div className="orb-portrait-loading"></div>
+                            ) : (
+                              <img 
+                                src={getFullImageUrl(profile?.ideal_image_url) || "https://uqsflvuuhbxkgmrydvdd.supabase.co/storage/v1/object/public/reflections/enkh_ideal.png"} 
+                                className="orb-portrait animate-pulse-slow" 
+                                alt="Ideal Ghibli Reflection" 
+                              />
+                            )
                           )}
                         </div>
 
@@ -1164,7 +1262,11 @@ export default function App() {
                                       onClick={() => setExpandedTimelineId(isExpanded ? null : item.id)}
                                     >
                                       <div className="timeline-card-header">
-                                        <img src={item.image_url} className="timeline-avatar" alt="Ghibli avatar" />
+                                        {item.image_url ? (
+                                          <img src={getFullImageUrl(item.image_url)} className="timeline-avatar" alt="Ghibli avatar" />
+                                        ) : (
+                                          <div className="timeline-avatar-loading"></div>
+                                        )}
                                         <div className="timeline-card-meta">
                                           <div className="timeline-card-style">{item.attachment_style}</div>
                                           <div className="timeline-card-insight">{item.insight}</div>
