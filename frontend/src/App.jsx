@@ -442,6 +442,29 @@ export default function App() {
     }
   };
 
+  const handleOnboardBack = () => {
+    if (onboardStep === 0) {
+      stopDictation();
+      setScreen('welcome');
+      return;
+    }
+    stopDictation();
+    const prevStep = onboardStep - 1;
+    const prevAnswer = onboardAnswers[prevStep];
+    const updatedAnswers = onboardAnswers.slice(0, prevStep);
+    setOnboardAnswers(updatedAnswers);
+    const question = ONBOARD_QUESTIONS[prevStep];
+    const optionIndex = question.options.findIndex(opt => opt.label === prevAnswer);
+    if (optionIndex !== -1) {
+      setOnboardChoice(optionIndex);
+      setOnboardCustom('');
+    } else {
+      setOnboardChoice(null);
+      setOnboardCustom(prevAnswer || '');
+    }
+    setOnboardStep(prevStep);
+  };
+
   // --- MIRROR LOGIC ---
   const generateMirrorObservations = async () => {
     setMirrorStatus('analyzing');
@@ -678,7 +701,18 @@ export default function App() {
             {screen === 'onboard' && (
               <div className="screen-content active">
                 <div className="ob-body">
-                  <div className="ob-step">Question {onboardStep + 1} of {ONBOARD_QUESTIONS.length}</div>
+                  <div className="ob-header">
+                    <button 
+                      type="button" 
+                      className="ob-back-btn" 
+                      onClick={handleOnboardBack}
+                      title="Go back"
+                    >
+                      ←
+                    </button>
+                    <div className="ob-step">Question {onboardStep + 1} of {ONBOARD_QUESTIONS.length}</div>
+                    <div style={{ width: 28 }}></div>
+                  </div>
                   <div className="ob-progress">
                     {ONBOARD_QUESTIONS.map((_, i) => (
                       <span key={i} className={i <= onboardStep ? 'on' : ''}></span>

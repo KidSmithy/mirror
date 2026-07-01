@@ -390,6 +390,32 @@ body::before {
   flex-direction: column;
   overflow-y: auto;
 }
+.ob-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.ob-back-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  font-size: 20px;
+  cursor: pointer;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+  padding: 0;
+  margin-left: -6px;
+}
+.ob-back-btn:hover {
+  background: rgba(0, 0, 0, 0.05);
+  color: var(--ink);
+}
 .ob-step { 
   font-size: 11px; 
   letter-spacing: 0.22em; 
